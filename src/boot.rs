@@ -1,10 +1,6 @@
 use core::mem;
 
-use crate::{
-    common,
-    fat::{Error, Read},
-    mem::MemoryRegion,
-};
+use crate::common;
 
 // Common data needed for all boot paths
 pub trait Info {
@@ -25,10 +21,6 @@ pub struct E820Entry {
     pub addr: u64,
     pub size: u64,
     pub entry_type: u32,
-}
-
-impl E820Entry {
-    pub const RAM_TYPE: u32 = 1;
 }
 
 // The so-called "zeropage"
@@ -153,14 +145,11 @@ pub struct Header {
 }
 
 impl Header {
-    // Read a kernel header from the first two sectors of a file
-    pub fn from_file(f: &mut dyn Read) -> Result<Self, Error> {
+    pub fn from_slice(f: &[u8]) -> Self {
         let mut data: [u8; 1024] = [0; 1024];
-        let mut region = MemoryRegion::from_bytes(&mut data);
-
-        f.seek(0)?;
-        f.load_file(&mut region)?;
-
+        for x in 0..1024 {
+            data[x] = f[x];
+        }
         #[repr(C)]
         struct HeaderData {
             before: [u8; HEADER_START],
@@ -168,7 +157,7 @@ impl Header {
             after: [u8; 1024 - HEADER_END],
         }
         // SAFETY: Struct consists entirely of primitive integral types.
-        Ok(unsafe { mem::transmute::<_, HeaderData>(data) }.hdr)
+        unsafe { mem::transmute::<_, HeaderData>(data) }.hdr
     }
 }
 

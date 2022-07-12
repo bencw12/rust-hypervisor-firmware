@@ -15,10 +15,10 @@ pub struct StartInfo {
     nr_modules: u32,
     modlist_paddr: u64,
     cmdline_paddr: u64,
-    rsdp_paddr: u64,
+    pub rsdp_paddr: u64,
     memmap_paddr: u64,
     memmap_entries: u32,
-    _pad: u32,
+    pub _pad: u32,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -58,7 +58,6 @@ impl Info for StartInfo {
         }
     }
 }
-
 // The PVH Boot Protocol starts at the 32-bit entrypoint to our firmware.
 extern "C" {
     fn ram32_start();
