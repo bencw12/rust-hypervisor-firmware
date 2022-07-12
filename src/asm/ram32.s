@@ -6,17 +6,66 @@ ram32_start:
     # Stash the PVH start_info struct in %rdi.
     movl %ebx, %edi
 
+# BCWH begin SEV code
+check_sev_feature:
+    # clear ebx to be safe because it will be used to get C bit position
+    xor  %ebx, %ebx
+    # Check if we have a valid (0x8000_001F) CPUID leaf
+    movl $0x80000000, %eax
+    cpuid
+
+    # This should fail on non SEV CPUs
+    cmpl $0x8000001f, %eax 
+    jl   no_sev
+
+    # Check for memory encryption feature:
+    # CPUID Fn8000_001F[EAX] - Bit 1
+    movl $0x8000001f, %eax
+    cpuid
+    btl  $1, %eax
+    jnc  no_sev
+
+    # Check if memory encryption is enabled
+    # MSR+0xC0010131 - Bit 0 (SEV enabled)
+    movl $0xc0010131, %ecx
+    rdmsr
+    btl  $0, %eax 
+    jnc  no_sev
+
+    # Get pte bit position to enable memory encryption
+    # CPUID Fn8000_001F[EBX] - Bits 5:0
+    movl %ebx, %eax
+    and  $0x3f, %eax
+
+    xor  %edx, %edx
+    test %eax, %eax
+    jz   setup_page_tables
+
+    subl $32, %eax
+    bts  %eax, %edx
+    # Clear lower 32 bits of C bit
+    movl $0, (SEV_ENC_BIT)
+    # Set upper 32 bits of C bit
+    movl %edx, (SEV_ENC_BIT + 4)
+    jmp  setup_page_tables
+
+no_sev:
+    xor  %eax, %eax
+
 setup_page_tables:
     # First L2 entry identity maps [0, 2 MiB)
     movl $0b10000011, (L2_TABLES) # huge (bit 7), writable (bit 1), present (bit 0)
+    movl %edx, (L2_TABLES+4)
     # First L3 entry points to L2 table
     movl $L2_TABLES, %eax
     orb  $0b00000011, %al # writable (bit 1), present (bit 0)
     movl %eax, (L3_TABLE)
+    movl %edx, (L3_TABLE+4)
     # First L4 entry points to L3 table
     movl $L3_TABLE, %eax
     orb  $0b00000011, %al # writable (bit 1), present (bit 0)
     movl %eax, (L4_TABLE)
+    movl %edx, (L4_TABLE+4)
 
 enable_paging:
     # Load page table root into CR3
