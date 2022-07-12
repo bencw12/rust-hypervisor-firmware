@@ -13,21 +13,21 @@ SECTIONS
 {
   /* Mapping the program headers and note into RAM makes the file smaller. */
   . = ram_min;
-  . += SIZEOF_HEADERS;
-  .note : { *(.note) } :note :ram
-
   /* These sections are mapped into RAM from the file. Omitting :ram from
      later sections avoids emitting empty sections in the final binary.       */
   data_start = .;
-  .rodata : { *(.rodata .rodata.*) } :ram
   . = ALIGN(4K);
   text_start = .;
-  .text   : { *(.text .text.*)     }
   .text32 : { *(.text32)           }
+  .text   : { *(.text .text.*)     }
   . = ALIGN(4K);
   text_end = .;
+  .rodata : { *(.rodata .rodata.*) } :ram
   .data   : { *(.data .data.*)     }
   data_size = . - data_start;
+
+  .note : { *(.note) } :note :ram
+
 
   /* The BSS section isn't mapped from file data. It is just zeroed in RAM. */
   .bss : {
