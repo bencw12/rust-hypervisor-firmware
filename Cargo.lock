@@ -137,9 +137,9 @@ dependencies = [
 
 [[package]]
 name = "linked_list_allocator"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "222d00bf23b303e0c82c7a4d5f04dc90f33a58b26a3adb1a09c6fbcf56cbd2a9"
+checksum = "636c3bc929db632724303109c88d5d559a2a60f62243bb041387f03fa081d94a"
 dependencies = [
  "spinning_top",
 ]
@@ -373,9 +373,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "x86_64"
-version = "0.14.9"
+version = "0.14.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "958cd5cb28e720db2f59ee9dc4235b5f82a183d079fb0e6caf43ad074cfdc66a"
+checksum = "100555a863c0092238c2e0e814c1096c1e5cf066a309c696a87e907b5f8c5d69"
 dependencies = [
  "bit_field",
  "bitflags",
