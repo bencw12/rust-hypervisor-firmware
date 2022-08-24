@@ -4,7 +4,7 @@
 
 ram32_start:
     # Tracepoint for Cloud Hypervisor
-    movl $0x30, %eax
+    movl $0x31, %eax
     outb $0x80
     # Stash the PVH start_info struct in %rdi.
     movl %ebx, %edi
