@@ -22,7 +22,7 @@
 use core::panic::PanicInfo;
 
 use crate::{boot::Info, mem::MemoryRegion, paging::set_or_clear_enc_bit};
-use bzimage::Kernel;
+use loader::Kernel;
 use x86_64::{instructions::hlt, PhysAddr};
 
 #[macro_use]
@@ -33,12 +33,13 @@ mod common;
 
 mod asm;
 mod boot;
-mod bzimage;
+mod loader;
 mod gdt;
 mod mem;
 mod paging;
 mod pci;
 mod pvh;
+mod elf;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -48,20 +49,28 @@ fn panic(info: &PanicInfo) -> ! {
     }
 }
 
-fn load_bzimage(info: &mut pvh::StartInfo) {
+fn load_kernel(info: &mut pvh::StartInfo) {
     let mut kernel = Kernel::new(info);
     //For now putting kernel length in info.pad
-    let mut kernel_file = MemoryRegion::new(bzimage::KERNEL_LOCATION, info._pad as u64);
+    log!("Kernel size: {}", info._pad);
+    let mut kernel_file = MemoryRegion::new(loader::KERNEL_LOCATION, info._pad as u64);
     set_or_clear_enc_bit(
-        PhysAddr::new(bzimage::KERNEL_LOCATION),
+        PhysAddr::new(loader::KERNEL_LOCATION),
         info._pad as u64,
         true,
         paging::EncBitMode::Clear,
     );
-    kernel.load_kernel_from_payload(&mut kernel_file).unwrap();
+
+    //Try to load elf if bzimage magic is not present
+    match kernel.load_bzimage_from_payload(&mut kernel_file) {
+        Err(loader::Error::MagicMissing) => kernel.load_elf_from_payload(&mut kernel_file).unwrap(),
+        _ => ()
+    };
+
+
     kernel.append_cmdline(info.cmdline());
     set_or_clear_enc_bit(
-        PhysAddr::new(bzimage::KERNEL_LOCATION),
+        PhysAddr::new(loader::KERNEL_LOCATION),
         info._pad as u64,
         true,
         paging::EncBitMode::Set,
@@ -80,6 +89,6 @@ pub extern "C" fn rust64_start(rdi: &mut pvh::StartInfo) -> ! {
 
 fn main(info: &mut pvh::StartInfo) -> ! {
     pci::print_bus();
-    load_bzimage(info);
+    load_kernel(info);
     panic!("Shouldn't reach here")
 }

@@ -23,6 +23,7 @@ pub struct E820Entry {
     pub entry_type: u32,
 }
 
+
 // The so-called "zeropage"
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
@@ -46,7 +47,7 @@ pub struct Params {
     efi_info: EfiInfo,              // 0x1c0
     alt_mem_k: u32,                 // 0x1e0
     scratch: u32,                   // 0x1e4
-    e820_entries: u8,               // 0x1e8
+    pub e820_entries: u8,               // 0x1e8
     eddbuf_entries: u8,             // 0x1e9
     edd_mbr_sig_buf_entries: u8,    // 0x1ea
     kbd_status: u8,                 // 0x1eb
@@ -57,7 +58,7 @@ pub struct Params {
     pub hdr: Header,                // 0x1f1
     _pad7: [u8; 0x290 - HEADER_END],
     edd_mbr_sig_buffer: [u32; 16], // 0x290
-    e820_table: [E820Entry; 128],  // 0x2d0
+    pub e820_table: [E820Entry; 128],  // 0x2d0
     _pad8: [u8; 0x30],             // 0xcd0
     eddbuf: [EddInfo; 6],          // 0xd00
     _pad9: [u8; 0x114],            // 0xeec
@@ -112,7 +113,7 @@ pub struct Header {
     pub root_dev: u16,
     pub boot_flag: u16,
     pub jump: u16,
-    pub header: [u8; 4],
+    pub header: u32,
     pub version: u16,
     pub realmode_swtch: u32,
     pub start_sys_seg: u16,
