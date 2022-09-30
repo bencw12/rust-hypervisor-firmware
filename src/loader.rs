@@ -131,7 +131,7 @@ impl Kernel {
             // log!("Read program header");
             let phdr = elf::Elf64_Phdr::from_slice(&phdr_bytes);
 
-            // log!("file offset: {}", offset)s;
+            // log!("file offset: {}", offset);
             // log!("phdr type: {}", phdrs_copy.read_u8(offset));
 
             offset += ELF_PHDR_SIZE as u64;
@@ -147,7 +147,7 @@ impl Kernel {
             // Write segment to memory
             let seg_region = MemoryRegion::new(seg_mem_offset, seg_len);
 
-            log!("Write program header: file offset: {}, mem offset: 0x{:x}, size: {}", seg_file_offset, seg_mem_offset, seg_len);
+            // log!("Write program header: file offset: {}, mem offset: 0x{:x}, size: {}", seg_file_offset, seg_mem_offset, seg_len);
 
             let remaining = seg_len % 8;
 
@@ -162,8 +162,7 @@ impl Kernel {
         
         self.entry_point = ehdr.e_entry;
 
-        log!("entry point: {:x}", self.entry_point);
-
+        // log!("entry point: {:x}", self.entry_point);
 
         const KERNEL_BOOT_FLAG_MAGIC: u16 = 0xaa55;
         const KERNEL_HDR_MAGIC: u32 = 0x5372_6448;
