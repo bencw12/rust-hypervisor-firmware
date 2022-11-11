@@ -13,6 +13,7 @@ use x86_64::{
 const ADDRESS_SPACE_GIB: usize = 4;
 const TABLE: PageTable = PageTable::new();
 
+#[derive(PartialEq)]
 pub enum EncBitMode {
     Set,
     Clear,
@@ -32,7 +33,7 @@ pub fn setup() {
     // SAFETY: This function is idempontent and only writes to static memory and
     // CR3. Thus, it is safe to run multiple times or on multiple threads.
     let (l4, l3, l2s) = unsafe { (&mut L4_TABLE, &mut L3_TABLE, &mut L2_TABLES) };
-    log!("Setting up {} GiB identity mapping", ADDRESS_SPACE_GIB);
+    // log!("Setting up {} GiB identity mapping", ADDRESS_SPACE_GIB);
     let sev_enc_bit = unsafe { SEV_ENC_BIT[0] };
     if sev_enc_bit > 0 {
         log!("SEV Enabled - PTE mask: 0x{:x}", sev_enc_bit);
@@ -76,13 +77,26 @@ pub fn set_or_clear_enc_bit(phys_addr: PhysAddr, len: u64, cache_flush: bool, mo
     if cache_flush {
         invalidate_data_cache_range(phys_addr, len);
     }
+
     let base_addr = phys_addr.as_u64() - (phys_addr.as_u64() % Size2MiB::SIZE);
-    let mut len = len - (len % Size2MiB::SIZE) + Size2MiB::SIZE;
+
+    let mut num_pages = 1;
+    if len > Size2MiB::SIZE {
+        num_pages = ( len / Size2MiB::SIZE) + 
+            if (len % Size2MiB::SIZE) > 0 {
+                1
+            } else {
+                0
+            }
+    }
+
+    //log!("{} C bit on {} pages", mode_str, num_pages);
     let mut l2_off = (base_addr >> 30) & 0x01ff;
     let mut pte_off = (base_addr >> 21) & 0x01ff;
     assert!(pte_off < 512);
     assert!(l2_off < l2s.len() as u64);
-    while len != 0 {
+
+    while num_pages != 0 {
         //get page of page table
         let table = &mut l2s[l2_off as usize];
         //get page table entry
@@ -95,7 +109,7 @@ pub fn set_or_clear_enc_bit(phys_addr: PhysAddr, len: u64, cache_flush: bool, mo
         //set new pte
         entry.set_addr(PhysAddr::new(new_addr), entry.flags());
 
-        len -= Size2MiB::SIZE;
+        num_pages -= 1;
         pte_off += 1;
         //Go to next page of page table
         if pte_off >= 512 {
