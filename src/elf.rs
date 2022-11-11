@@ -1,19 +1,6 @@
 use core::mem;
 
-pub const EI_MAG0: u32 = 0;
-pub const EI_MAG1: u32 = 1;
-pub const EI_MAG2: u32 = 2;
-pub const EI_MAG3: u32 = 3;
-pub const EI_DATA: u32 = 5;
-
-pub const ELFMAG0: u32 = 127;
-
-pub const ELFDATA2LSB: u32 = 1;
 pub const PT_LOAD: u32 = 1;
-
-pub const ELFMAG1: u8 = b'E';
-pub const ELFMAG2: u8 = b'L';
-pub const ELFMAG3: u8 = b'F';
 
 #[allow(non_camel_case_types)]
 type Elf64_Addr = __u64;
