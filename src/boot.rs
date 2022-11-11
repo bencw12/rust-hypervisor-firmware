@@ -148,9 +148,7 @@ pub struct Header {
 impl Header {
     pub fn from_slice(f: &[u8]) -> Self {
         let mut data: [u8; 1024] = [0; 1024];
-        for x in 0..1024 {
-            data[x] = f[x];
-        }
+        data.copy_from_slice(f);
         #[repr(C)]
         struct HeaderData {
             before: [u8; HEADER_START],
