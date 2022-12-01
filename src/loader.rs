@@ -57,13 +57,11 @@ impl Kernel {
         }
         self.hdr = Header::from_slice(&header);
         if self.hdr.boot_flag != 0xAA55 || self.hdr.header != u32::from_le_bytes(*b"HdrS") {
-            log!("Magic missing");
             return Err(Error::MagicMissing);
         }
         // Check relocatable
 
         if self.hdr.version < 0x205 || self.hdr.relocatable_kernel == 0 {
-            log!("Not relocatable");
             return Err(Error::NotRelocatable);
         }
         
@@ -94,8 +92,8 @@ impl Kernel {
     pub fn boot(&mut self) {
 
         let jump_address = self.entry_point;
+        #[cfg(debug_assertions)]
         log!("Jumping to: 0x{:x}", jump_address);
-        log!("TEST");
 
         // Rely on x86 C calling convention where second argument is put into %rsi register
         let ptr = jump_address as *const ();

@@ -329,7 +329,6 @@ impl FwCfg {
 
         let mut kernel = Kernel::new();
         // let mut port = Port::new(0x80);
-        log!("TEST");
         // unsafe { port.write(0x35u8)};
         kernel.load_bzimage_from_payload(&mut kernel_region).unwrap();
         // unsafe { port.write(0x36u8)};

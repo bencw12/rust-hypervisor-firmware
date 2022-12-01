@@ -21,7 +21,7 @@
 use core::panic::PanicInfo;
 use x86_64::{instructions::hlt, registers::{control::{ Cr4, Cr4Flags, Cr0, Cr0Flags}, xcontrol::{XCr0, XCr0Flags}}};
 #[macro_use]
-
+#[cfg(debug_assertions)]
 mod serial;
 
 #[macro_use]
@@ -36,6 +36,7 @@ mod fw_cfg;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    #[cfg(debug_assertions)]
     log!("PANIC: {}", _info);
     loop {
         hlt()
