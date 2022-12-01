@@ -6,10 +6,8 @@ ram32_start:
     # Tracepoint for Cloud Hypervisor
     movl $0x31, %eax
     outb $0x80
-    # Stash the PVH start_info struct in %rdi.
-    movl %ebx, %edi
 
-# BCWH begin SEV code
+# begin SEV code
 check_sev_feature:
     # clear ebx to be safe because it will be used to get C bit position
     xor  %ebx, %ebx
@@ -103,5 +101,4 @@ jump_to_64bit:
     movw %ax, %fs
     movw %ax, %ss
     # Set CS to a 64-bit segment and jump to 64-bit Rust code.
-    # PVH start_info is in %rdi, the first paramter of the System V ABI.
     ljmpl $0x08, $rust64_start

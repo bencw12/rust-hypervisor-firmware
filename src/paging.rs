@@ -35,6 +35,7 @@ pub fn setup() {
     let (l4, l3, l2s) = unsafe { (&mut L4_TABLE, &mut L3_TABLE, &mut L2_TABLES) };
     // log!("Setting up {} GiB identity mapping", ADDRESS_SPACE_GIB);
     let sev_enc_bit = unsafe { SEV_ENC_BIT[0] };
+    #[cfg(debug_assertions)]
     if sev_enc_bit > 0 {
         log!("SEV Enabled - PTE mask: 0x{:x}", sev_enc_bit);
     }
@@ -90,7 +91,6 @@ pub fn set_or_clear_enc_bit(phys_addr: PhysAddr, len: u64, cache_flush: bool, mo
             }
     }
 
-    //log!("{} C bit on {} pages", mode_str, num_pages);
     let mut l2_off = (base_addr >> 30) & 0x01ff;
     let mut pte_off = (base_addr >> 21) & 0x01ff;
     assert!(pte_off < 512);

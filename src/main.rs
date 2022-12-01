@@ -16,29 +16,27 @@
 #![feature(stmt_expr_attributes)]
 #![no_std]
 #![no_main]
-#![cfg_attr(test, allow(unused_imports, dead_code))]
 #![cfg_attr(not(feature = "log-serial"), allow(unused_variables, unused_imports))]
 
 use core::panic::PanicInfo;
 use x86_64::{instructions::hlt, registers::{control::{ Cr4, Cr4Flags, Cr0, Cr0Flags}, xcontrol::{XCr0, XCr0Flags}}};
 #[macro_use]
+
 mod serial;
 
 #[macro_use]
-mod common;
 mod asm;
 mod boot;
 mod loader;
 mod gdt;
 mod mem;
 mod paging;
-mod pvh;
 mod elf;
 mod fw_cfg;
 
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    log!("PANIC: {}", info);
+fn panic(_info: &PanicInfo) -> ! {
+    log!("PANIC: {}", _info);
     loop {
         hlt()
     }
@@ -70,14 +68,15 @@ fn enable_sse() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust64_start(rdi: &mut pvh::StartInfo) {
-    main(rdi)
+pub extern "C" fn rust64_start() {
+    main()
 }
 
-fn main(info: &mut pvh::StartInfo) -> ! {
+fn main() -> ! {
     //align stack
     unsafe{core::arch::asm!("push rax")};
     //initialize logger
+    #[cfg(debug_assertions)]
     serial::PORT.borrow_mut().init();
     //set control registers
     enable_sse();
@@ -85,7 +84,7 @@ fn main(info: &mut pvh::StartInfo) -> ! {
     paging::setup();
 
     let mut loader = fw_cfg::FwCfg::new();
-    loader.load_kernel(info).unwrap();
+    loader.load_kernel().unwrap();
 
     panic!("Shouldn't reach here")
 }

@@ -3,7 +3,7 @@ use core::panic;
 use sha2::Sha256;
 use x86_64::{instructions::port::Port, PhysAddr};
 
-use crate::{mem::MemoryRegion, loader::{self, Kernel}, elf, pvh, paging, boot::Info};
+use crate::{mem::MemoryRegion, loader::{self, Kernel}, elf, paging};
 
 use sha2::Digest;
 
@@ -115,16 +115,16 @@ impl FwCfg {
         }
     }
 
-    pub fn load_kernel(&mut self, info: &pvh::StartInfo) -> Result<(), &'static str> {
+    pub fn load_kernel(&mut self) -> Result<(), &'static str> {
         match self.kernel_type {
-            KernelType::BzImage => self.load_bzimage(info)?,
-            KernelType::Elf => self.load_kernel_elf(info)?,
+            KernelType::BzImage => self.load_bzimage()?,
+            KernelType::Elf => self.load_kernel_elf()?,
         };
 
         Ok(())
     }
     
-    fn load_kernel_elf(&mut self, info: &pvh::StartInfo) -> Result<(), &'static str> {
+    fn load_kernel_elf(&mut self) -> Result<(), &'static str> {
         let mut debug_port = Port::<u8>::new(DEBUG_PORT);
         //Get elf header
         self.do_command(Command::ElfHdr);
@@ -150,6 +150,7 @@ impl FwCfg {
             &self.hashes.as_bytes()[hashes_offset..hashes_offset+loader::HASH_SIZE_BYTES as usize]
         ).map_err(|_| "Elf header verification failed")?;
 
+        #[cfg(debug_assertions)]
         log!("ELF header verification succeeded");
         hashes_offset += loader::HASH_SIZE_BYTES as usize;
 
@@ -188,6 +189,7 @@ impl FwCfg {
             &self.hashes.as_bytes()[hashes_offset..hashes_offset+loader::HASH_SIZE_BYTES as usize]
         ).map_err(|_| "Program header verification failed")?;
 
+        #[cfg(debug_assertions)]
         log!("Program header verification succeeded");
         //update hash offset to segments hash location
         hashes_offset += loader::HASH_SIZE_BYTES as usize;
@@ -252,43 +254,29 @@ impl FwCfg {
             &self.hashes.as_bytes()[hashes_offset..hashes_offset+loader::HASH_SIZE_BYTES as usize]
         ).map_err(|_| "Program header verification failed")?;
 
+        #[cfg(debug_assertions)]
         log!("Loadable segment hash verification succeeded");
 
         
         //Write bootparams
+        #[cfg(debug_assertions)]
         log!("Booting kernel");
-        let mut kernel_params = Kernel::new(info);
+        let mut kernel_params = Kernel::new();
         kernel_params.entry_point = ehdr.e_entry;
 
-        kernel_params.params.hdr.type_of_loader = loader::KERNEL_LOADER_OTHER;
-        kernel_params.params.hdr.boot_flag = loader::KERNEL_BOOT_FLAG_MAGIC;
-        kernel_params.params.hdr.header = loader::KERNEL_HDR_MAGIC;
-        kernel_params.params.hdr.cmd_line_ptr = loader::CMDLINE_START as u32;
-        kernel_params.params.hdr.cmdline_size = loader::CMDLINE_MAX_LEN as u32;
-        kernel_params.params.hdr.kernel_alignment = loader::KERNEL_MIN_ALIGNMENT_BYTES;
-
-        kernel_params.add_e820_entry(
-            0, loader::EBDA_START, loader::E820_RAM
-        ).unwrap();
-
+        //Re-encrypt the bounce buffer region
         paging::set_or_clear_enc_bit(
             PhysAddr::new(FW_CFG_DATA_BASE), 
             FW_CFG_DATA_SIZE, 
             true, 
             paging::EncBitMode::Set
         );
-
-
-        kernel_params.write_params();
-
-        kernel_params.append_cmdline(info.cmdline());
-        //Re-encrypt the bounce buffer region
         kernel_params.boot();
 
         Ok(())
     }
     
-    fn load_bzimage(&mut self, info: &pvh::StartInfo) -> Result<(), &'static str> {
+    fn load_bzimage(&mut self) -> Result<(), &'static str> {
         //Load bzImage
         let mut debug_port = Port::<u8>::new(DEBUG_PORT);
         let bzimage_len = self.do_command(Command::BzImageLen);
@@ -336,16 +324,18 @@ impl FwCfg {
             &hash, 
             &self.hashes.as_bytes()
         ).map_err(|_| "bzImage verification failed")?;
+        #[cfg(debug_assertions)]
         log!("BzImage verification succeeded");
 
-        let mut kernel = Kernel::new(info);
+        let mut kernel = Kernel::new();
         // let mut port = Port::new(0x80);
-
+        log!("TEST");
         // unsafe { port.write(0x35u8)};
         kernel.load_bzimage_from_payload(&mut kernel_region).unwrap();
         // unsafe { port.write(0x36u8)};
 
-        kernel.append_cmdline(info.cmdline());
+
+        // kernel.append_cmdline(info.cmdline());
         kernel.boot();
 
         Ok(())
