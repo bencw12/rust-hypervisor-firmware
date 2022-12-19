@@ -23,7 +23,7 @@ pub enum Error {
     NotRelocatable,
 }
 
-pub const KERNEL_LOAD: u64 = 0x20_0000;
+pub const KERNEL_LOAD: u32 = 0x40_0000;
 const ZERO_PAGE_START: u64 = 0x7000;
 pub const HASH_SIZE_BYTES: u64 = 32;
 pub const CMDLINE_START: u64 = 0x20000;
@@ -73,14 +73,9 @@ impl Kernel {
         };
 
         let setup_bytes = (setup_sects + 1) * 512;
-        let remaining_bytes = kernel.as_bytes().len() as u32 - setup_bytes;
-        let mut region = MemoryRegion::new(KERNEL_LOAD, remaining_bytes as u64);
-        let remaining: &mut [u8] = kernel.as_mut_slice(setup_bytes as u64, remaining_bytes as u64);
-        //Copy kernel to correct location
-        region.as_bytes()[..remaining.len()].copy_from_slice(remaining);
     
         self.hdr.type_of_loader = 0xff;
-        self.hdr.code32_start = KERNEL_LOAD as u32;
+        self.hdr.code32_start = KERNEL_LOAD + setup_bytes;
         self.hdr.cmd_line_ptr = CMDLINE_START as u32;
         self.entry_point = self.hdr.code32_start as u64 + 0x200;
     
