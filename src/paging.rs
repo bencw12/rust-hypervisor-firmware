@@ -36,9 +36,9 @@ pub fn setup() {
     // log!("Setting up {} GiB identity mapping", ADDRESS_SPACE_GIB);
     let sev_enc_bit = unsafe { SEV_ENC_BIT[0] };
 
-    if sev_enc_bit > 0 {
-        log!("SEV Enabled - PTE mask: 0x{:x}", sev_enc_bit);
-    }
+    // if sev_enc_bit > 0 {
+    //     log!("SEV Enabled - PTE mask: 0x{:x}", sev_enc_bit);
+    // }
     let pt_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
     // Setup Identity map using L2 huge pages
     let mut next_addr = PhysAddr::new(0);

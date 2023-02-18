@@ -28,6 +28,7 @@ use x86_64::{
     },
 };
 #[macro_use]
+#[cfg(debug_assertions)]
 mod serial;
 
 #[macro_use]
@@ -42,6 +43,7 @@ mod paging;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    #[cfg(debug_assertions)]
     log!("PANIC: {}", _info);
     loop {
         hlt()
@@ -82,16 +84,18 @@ fn main() -> ! {
     //align stack
     unsafe { core::arch::asm!("push rax") };
     //initialize logger
+    #[cfg(debug_assertions)]
     serial::PORT.borrow_mut().init();
     //set control registers
+
     enable_sse();
     //enable paging/SEV
     let mut debug_port = Port::<u8>::new(0x80);
-    unsafe { debug_port.write(0x50u8) };
+    // unsafe { debug_port.write(0x50u8) };
     paging::setup();
-    unsafe { debug_port.write(0x51u8) };
+    // unsafe { debug_port.write(0x51u8) };
     let mut loader = fw_cfg::FwCfg::new();
-    unsafe { debug_port.write(0x52u8) };
+    // unsafe { debug_port.write(0x52u8) };
     loader.load_kernel().unwrap();
 
     panic!("Shouldn't reach here")

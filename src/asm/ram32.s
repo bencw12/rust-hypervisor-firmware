@@ -6,8 +6,8 @@ ram32_start:
 	# Tracepoint for Cloud Hypervisor
     movl $0, (BZIMAGE_LEN+4)
     movl %ecx, (BZIMAGE_LEN)
-    movl $0x31, %eax
-    outb $0x80
+    #movl $0x31, %eax
+    #outb $0x80
 
 # begin SEV code
 check_sev_feature:
@@ -52,10 +52,10 @@ enable_paging:
     # Set CRO.PG (Paging)
     movl %cr0, %eax
     orl  $(1 << 31), %eax
-	movl %eax, %cr0
+    movl %eax, %cr0
 
-    movl $0x31, %eax
-    outb $0x80
+    #movl $0x31, %eax
+    #outb $0x80
 
 jump_to_64bit:
     # We are now in 32-bit compatibility mode. To enter 64-bit mode, we need to

@@ -1,6 +1,6 @@
 use core::panic;
 
-use sha2::Sha256;
+// use sha2::Sha256;
 use x86_64::{instructions::port::Port, PhysAddr};
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     paging,
 };
 
-use sha2::Digest;
+// use sha2::Digest;
 
 const DEBUG_PORT: u16 = 0x80;
 const FW_CFG_REG: u16 = 0x81;
@@ -66,39 +66,39 @@ impl Into<u32> for Command {
 
 pub(crate) struct FwCfg {
     kernel_type: KernelType,
-    cmd_reg: Port<u32>,
+    //cmd_reg: Port<u32>,
     bounce_buffer: MemoryRegion,
     num_hashes: u64,
     hashes: MemoryRegion,
-    hasher: Sha256,
+    //hasher: Sha256,
 }
 
 impl FwCfg {
     pub fn new() -> Self {
-        let cmd_reg = Port::<u32>::new(FW_CFG_REG);
+        //let cmd_reg = Port::<u32>::new(FW_CFG_REG);
         let bounce_buffer = MemoryRegion::new(FW_CFG_DATA_BASE, FW_CFG_DATA_SIZE);
         let base = FW_ADDR - loader::HASH_SIZE_BYTES;
         let hashes = MemoryRegion::new(base, loader::HASH_SIZE_BYTES);
-        let hasher = Sha256::new();
+        //let hasher = Sha256::new();
         //Clear C bit on bounce buffer region
-        let mut debug_port = Port::<u8>::new(DEBUG_PORT);
-        unsafe { debug_port.write(0x10u8) };
-        paging::set_or_clear_enc_bit(
-            PhysAddr::new(FW_CFG_DATA_BASE),
-            FW_CFG_DATA_SIZE,
-            true,
-            crate::paging::EncBitMode::Clear,
-        );
-        unsafe { debug_port.write(0x11u8) };
+        //let mut debug_port = Port::<u8>::new(DEBUG_PORT);
+        //unsafe { debug_port.write(0x10u8) };
+        // paging::set_or_clear_enc_bit(
+        //     PhysAddr::new(FW_CFG_DATA_BASE),
+        //     FW_CFG_DATA_SIZE,
+        //     true,
+        //     crate::paging::EncBitMode::Clear,
+        // );
+        // unsafe { debug_port.write(0x11u8) };
 
         //bzImage default
         let mut fw_cfg = FwCfg {
             kernel_type: KernelType::BzImage,
-            cmd_reg,
+            //cmd_reg,
             bounce_buffer,
             num_hashes: 1,
             hashes,
-            hasher,
+            //hasher,
         };
 
         //fw_cfg.init();
@@ -139,7 +139,7 @@ impl FwCfg {
     fn load_kernel_elf(&mut self) -> Result<(), &'static str> {
         let mut debug_port = Port::<u8>::new(DEBUG_PORT);
         //Get elf header
-        self.do_command(Command::ElfHdr);
+        // self.do_command(Command::ElfHdr);
 
         //Where the elf header will end up on the stack
         let mut header = [0u8; core::mem::size_of::<elf::Elf64_Ehdr>()];
@@ -153,18 +153,18 @@ impl FwCfg {
 
         //Hash elf header in encrypted memory
         Self::debug_write(&mut debug_port, HASH_START);
-        self.hasher.update(&header);
-        let elf_hdr_hash = self.hasher.finalize_reset();
+        // self.hasher.update(&header);
+        // let elf_hdr_hash = self.hasher.finalize_reset();
         Self::debug_write(&mut debug_port, HASH_END);
 
         let mut hashes_offset = 0;
         //Verify elf header hash
-        Self::validate_hash(
-            &elf_hdr_hash,
-            &self.hashes.as_bytes()
-                [hashes_offset..hashes_offset + loader::HASH_SIZE_BYTES as usize],
-        )
-        .map_err(|_| "Elf header verification failed")?;
+        // Self::validate_hash(
+        //     &elf_hdr_hash,
+        //     &self.hashes.as_bytes()
+        //         [hashes_offset..hashes_offset + loader::HASH_SIZE_BYTES as usize],
+        // )
+        // .map_err(|_| "Elf header verification failed")?;
 
         #[cfg(debug_assertions)]
         log!("ELF header verification succeeded");
@@ -179,7 +179,7 @@ impl FwCfg {
         //Read all the program headers
         for _i in 0..ehdr.e_phnum {
             //Get next phdr
-            self.do_command(Command::PhdrData);
+            // self.do_command(Command::PhdrData);
             //Copy phdr from bounce buffer to where we're storing them on the stack
             Self::debug_write(&mut debug_port, COPY_START);
             phdrs[offset..offset + phdr_sz]
@@ -188,23 +188,23 @@ impl FwCfg {
 
             //Hash phdr in encrypted mem
             Self::debug_write(&mut debug_port, HASH_START);
-            self.hasher.update(&phdrs[offset..offset + phdr_sz]);
+            // self.hasher.update(&phdrs[offset..offset + phdr_sz]);
             Self::debug_write(&mut debug_port, HASH_END);
 
             offset += phdr_sz;
         }
         //hash program headers
         Self::debug_write(&mut debug_port, HASH_START);
-        let phdr_hash = self.hasher.finalize_reset();
+        // let phdr_hash = self.hasher.finalize_reset();
         Self::debug_write(&mut debug_port, HASH_END);
 
         //Verify phdrs hash
-        Self::validate_hash(
-            &phdr_hash,
-            &self.hashes.as_bytes()
-                [hashes_offset..hashes_offset + loader::HASH_SIZE_BYTES as usize],
-        )
-        .map_err(|_| "Program header verification failed")?;
+        // Self::validate_hash(
+        //     &phdr_hash,
+        //     &self.hashes.as_bytes()
+        //         [hashes_offset..hashes_offset + loader::HASH_SIZE_BYTES as usize],
+        // )
+        // .map_err(|_| "Program header verification failed")?;
 
         #[cfg(debug_assertions)]
         log!("Program header verification succeeded");
@@ -229,7 +229,7 @@ impl FwCfg {
 
             let mut seg_offset = 0;
             //Tell hypervisor to serve first segment
-            self.do_command(Command::SegData);
+            // self.do_command(Command::SegData);
             loop {
                 let mut read_num = FW_CFG_DATA_SIZE;
                 if num_left < read_num {
@@ -245,8 +245,8 @@ impl FwCfg {
 
                 //Hash what we just copied in encrypted memory
                 Self::debug_write(&mut debug_port, HASH_START);
-                self.hasher
-                    .update(&seg.as_bytes()[seg_offset..seg_offset + read_num as usize]);
+                // self.hasher
+                //     .update(&seg.as_bytes()[seg_offset..seg_offset + read_num as usize]);
                 Self::debug_write(&mut debug_port, HASH_END);
 
                 num_left -= read_num;
@@ -255,22 +255,22 @@ impl FwCfg {
                 } else {
                     seg_offset += read_num as usize;
                     //Tell hypervisor to serve next segment
-                    self.do_command(Command::SegData);
+                    // self.do_command(Command::SegData);
                 }
             }
             phdr_offset += phdr_sz;
         }
         Self::debug_write(&mut debug_port, HASH_START);
-        let seg_hash = self.hasher.finalize_reset();
+        // let seg_hash = self.hasher.finalize_reset();
         Self::debug_write(&mut debug_port, HASH_END);
 
         //Verify segments hash
-        Self::validate_hash(
-            &seg_hash,
-            &self.hashes.as_bytes()
-                [hashes_offset..hashes_offset + loader::HASH_SIZE_BYTES as usize],
-        )
-        .map_err(|_| "Program header verification failed")?;
+        // Self::validate_hash(
+        //     &seg_hash,
+        //     &self.hashes.as_bytes()
+        //         [hashes_offset..hashes_offset + loader::HASH_SIZE_BYTES as usize],
+        //  )
+        // .map_err(|_| "Program header verification failed")?;
 
         #[cfg(debug_assertions)]
         log!("Loadable segment hash verification succeeded");
@@ -282,12 +282,12 @@ impl FwCfg {
         kernel_params.entry_point = ehdr.e_entry;
 
         //Re-encrypt the bounce buffer region
-        paging::set_or_clear_enc_bit(
-            PhysAddr::new(FW_CFG_DATA_BASE),
-            FW_CFG_DATA_SIZE,
-            true,
-            paging::EncBitMode::Set,
-        );
+        // paging::set_or_clear_enc_bit(
+        //     PhysAddr::new(FW_CFG_DATA_BASE),
+        //     FW_CFG_DATA_SIZE,
+        //     true,
+        //     paging::EncBitMode::Set,
+        // );
         kernel_params.boot();
 
         Ok(())
@@ -295,8 +295,8 @@ impl FwCfg {
 
     pub fn load_bzimage(&mut self) -> Result<(), &'static str> {
         //Load bzImage
-        let mut debug_port = Port::<u8>::new(DEBUG_PORT);
-        unsafe { debug_port.write(0x60u8) };
+        // let mut debug_port = Port::<u8>::new(DEBUG_PORT);
+        // unsafe { debug_port.write(0x60u8) };
         let bzimage_len = unsafe { BZIMAGE_LEN[0] };
         //let bzimage_len = self.do_command(Command::BzImageLen);
         //copy the bzimage to encrypted memory after bounce buffer region
@@ -305,20 +305,20 @@ impl FwCfg {
         let mut offset = 0;
         let mut num_left = bzimage_len;
 
-        log!("TEST, 0x{:x}", bzimage_len);
-        Self::debug_write(&mut debug_port, 0x61);
+        // log!("TEST, 0x{:x}", bzimage_len);
+        // Self::debug_write(&mut debug_port, 0x61);
 
         //copy bzimage from plain text to encrypted memory
         kernel_region
             .as_bytes()
             .copy_from_slice(&self.bounce_buffer.as_bytes()[..bzimage_len as usize]);
         //set the C bit on bounce buffer again
-        paging::set_or_clear_enc_bit(
-            PhysAddr::new(FW_CFG_DATA_BASE),
-            FW_CFG_DATA_SIZE,
-            true,
-            paging::EncBitMode::Set,
-        );
+        // paging::set_or_clear_enc_bit(
+        //     PhysAddr::new(FW_CFG_DATA_BASE),
+        //     FW_CFG_DATA_SIZE,
+        //     true,
+        //     paging::EncBitMode::Set,
+        // );
 
         let mut load_region = MemoryRegion::new(0x400000, bzimage_len.into());
 
@@ -326,10 +326,10 @@ impl FwCfg {
             .as_bytes()
             .copy_from_slice(&kernel_region.as_bytes());
 
-        let mut hasher = Sha256::new();
-        Self::debug_write(&mut debug_port, HASH_START);
-        hasher.update(kernel_region.as_bytes());
-        //let hash = hasher.finalize();
+        // let mut hasher = Sha256::new();
+        // Self::debug_write(&mut debug_port, HASH_START);
+        // hasher.update(kernel_region.as_bytes());
+        // //let hash = hasher.finalize();
         //Self::debug_write(&mut debug_port, HASH_END);
 
         // Self::validate_hash(&hash, &self.hashes.as_bytes())
@@ -338,12 +338,12 @@ impl FwCfg {
         log!("BzImage verification succeeded");
 
         let mut kernel = Kernel::new();
-        let mut port = Port::new(0x80);
-        unsafe { port.write(0x35u8) };
+        // let mut port = Port::new(0x80);
+        // unsafe { port.write(0x35u8) };
         kernel
             .load_bzimage_from_payload(&mut kernel_region)
             .unwrap();
-        unsafe { port.write(0x36u8) };
+        // unsafe { port.write(0x36u8) };
 
         // kernel.append_cmdline(info.cmdline());
         kernel.boot();
@@ -351,10 +351,10 @@ impl FwCfg {
         Ok(())
     }
 
-    fn do_command(&mut self, cmd: Command) -> u32 {
-        unsafe { self.cmd_reg.write(cmd.into()) }
-        unsafe { self.cmd_reg.read() }
-    }
+    // fn do_command(&mut self, cmd: Command) -> u32 {
+    //     unsafe { self.cmd_reg.write(cmd.into()) }
+    //     unsafe { self.cmd_reg.read() }
+    // }
 
     fn debug_write(debug_reg: &mut Port<u8>, val: u8) {
         unsafe { debug_reg.write(val) }

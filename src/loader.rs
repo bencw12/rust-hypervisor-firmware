@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::{boot::Header, boot::HEADER_START, mem::MemoryRegion};
-use x86_64::instructions::port::Port;
+// use x86_64::instructions::port::Port;
 
 #[derive(Debug)]
 pub enum Error {
@@ -81,8 +81,8 @@ impl Kernel {
         self.hdr.cmd_line_ptr = CMDLINE_START as u32;
         self.entry_point = self.hdr.code32_start as u64 + 0x200;
 
-        let mut port = Port::new(0x80);
-        unsafe { port.write(0x90u8) };
+        // let mut port = Port::new(0x80);
+        // unsafe { port.write(0x90u8) };
 
         self.write_params();
 
@@ -92,7 +92,7 @@ impl Kernel {
     pub fn boot(&mut self) {
         let jump_address = self.entry_point;
 
-        log!("Jumping to: 0x{:x}", jump_address);
+        //log!("Jumping to: 0x{:x}", jump_address);
 
         // Rely on x86 C calling convention where second argument is put into %rsi register
         let ptr = jump_address as *const ();

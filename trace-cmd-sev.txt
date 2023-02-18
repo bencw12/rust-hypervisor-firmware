@@ -1,0 +1,141 @@
+CPU 0 is empty
+CPU 1 is empty
+CPU 2 is empty
+CPU 3 is empty
+CPU 4 is empty
+CPU 5 is empty
+CPU 6 is empty
+CPU 7 is empty
+CPU 8 is empty
+CPU 9 is empty
+CPU 10 is empty
+CPU 11 is empty
+CPU 12 is empty
+CPU 13 is empty
+CPU 14 is empty
+CPU 15 is empty
+CPU 16 is empty
+CPU 17 is empty
+CPU 18 is empty
+CPU 19 is empty
+CPU 20 is empty
+CPU 21 is empty
+CPU 22 is empty
+CPU 23 is empty
+CPU 24 is empty
+CPU 27 is empty
+CPU 28 is empty
+CPU 30 is empty
+CPU 31 is empty
+cpus=32
+     firecracker-1743662 [025] 1301062.226856: kvm_update_master_clock: masterclock 0 hostclock 0x1 offsetmatched 0
+     firecracker-1743662 [026] 1301062.230031: kvm_cpuid:            func 1 idx cf50bd01 rax 0 rbx 0 rcx 0 rdx 0, cpuid entry not found
+     firecracker-1743662 [026] 1301062.230038: kvm_write_tsc_offset: vcpu=0 prev=0 next=18442847861310018526
+     firecracker-1743662 [026] 1301062.230038: kvm_track_tsc:        vcpu_id 0 masterclock 0 offsetmatched 0 nr_online 1 hostclock 0x1
+     firecracker-1743662 [026] 1301062.230104: kvm_unmap_hva_range:  mmu notifier unmap range: 0x007ffff91c1000 -- 0x007ffff91c2000
+     firecracker-1743662 [026] 1301062.230105: kvm_set_spte_hva:     mmu notifier set pte hva: 0x007ffff91c1000
+     firecracker-1743662 [026] 1301062.230107: kvm_unmap_hva_range:  mmu notifier unmap range: 0x007ffff91c2000 -- 0x007ffff91c3000
+     firecracker-1743662 [026] 1301062.230107: kvm_set_spte_hva:     mmu notifier set pte hva: 0x007ffff91c2000
+     firecracker-1743662 [026] 1301062.237895: kvm_write_tsc_offset: vcpu=0 prev=18442847861310018526 next=18442847861310018526
+     firecracker-1743662 [026] 1301062.237895: kvm_track_tsc:        vcpu_id 0 masterclock 0 offsetmatched 0 nr_online 1 hostclock 0x1
+     firecracker-1743662 [026] 1301062.249965: kvm_unmap_hva_range:  mmu notifier unmap range: 0x007facb8000000 -- 0x007facb80c3000
+       fc_vcpu 0-1743666 [029] 1301062.250080: kvm_unmap_hva_range:  mmu notifier unmap range: 0x007facb80c0000 -- 0x007facb80c1000
+       fc_vcpu 0-1743666 [029] 1301062.250088: kvm_set_spte_hva:     mmu notifier set pte hva: 0x007facb80c0000
+       fc_vcpu 0-1743666 [029] 1301062.250199: kvm_fpu:              load
+       fc_vcpu 0-1743666 [029] 1301062.250200: kvm_fpu:              unload
+       fc_vcpu 0-1743666 [029] 1301062.250202: kvm_userspace_exit:   reason KVM_EXIT_UNKNOWN (0)
+       fc_vcpu 0-1743666 [029] 1301062.250209: kvm_fpu:              load
+       fc_vcpu 0-1743666 [029] 1301062.250213: kvm_update_master_clock: masterclock 1 hostclock 0x1 offsetmatched 1
+       fc_vcpu 0-1743666 [029] 1301062.250270: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250277: kvm_wait_lapic_expire: vcpu 0: delta 0 (late)
+       fc_vcpu 0-1743666 [029] 1301062.250278: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000014 100000
+       fc_vcpu 0-1743666 [029] 1301062.250279: kvm_page_fault:       address 100000 error_code 14
+       fc_vcpu 0-1743666 [029] 1301062.250288: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250292: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 106000
+       fc_vcpu 0-1743666 [029] 1301062.250292: kvm_page_fault:       address 106000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250297: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250301: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 10d000
+       fc_vcpu 0-1743666 [029] 1301062.250301: kvm_page_fault:       address 10d000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250304: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250308: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 109000
+       fc_vcpu 0-1743666 [029] 1301062.250308: kvm_page_fault:       address 109000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250310: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250315: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 108000
+       fc_vcpu 0-1743666 [029] 1301062.250315: kvm_page_fault:       address 108000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250317: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250321: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 107000
+       fc_vcpu 0-1743666 [029] 1301062.250321: kvm_page_fault:       address 107000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250323: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250328: kvm_exit:             reason UNKNOWN (148) rip 0x100000 info 60 0
+       fc_vcpu 0-1743666 [029] 1301062.250342: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250346: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000014 100000
+       fc_vcpu 0-1743666 [029] 1301062.250346: kvm_page_fault:       address 100000 error_code 14
+       fc_vcpu 0-1743666 [029] 1301062.250347: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250351: kvm_exit:             reason UNKNOWN (143) rip 0x100000 info 1100 0
+       fc_vcpu 0-1743666 [029] 1301062.250361: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250366: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000014 100000
+       fc_vcpu 0-1743666 [029] 1301062.250366: kvm_page_fault:       address 100000 error_code 14
+       fc_vcpu 0-1743666 [029] 1301062.250367: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250371: kvm_exit:             reason UNKNOWN (144) rip 0x100000 info 80000011 0
+       fc_vcpu 0-1743666 [029] 1301062.250380: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250384: kvm_exit:             reason EXIT_NPF rip 0x100000 info 600000006 107000
+       fc_vcpu 0-1743666 [029] 1301062.250384: kvm_page_fault:       address 107000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250385: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250389: kvm_exit:             reason EXIT_NPF rip 0x100000 info 600000006 108000
+       fc_vcpu 0-1743666 [029] 1301062.250389: kvm_page_fault:       address 108000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250390: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250394: kvm_exit:             reason EXIT_NPF rip 0x100000 info 600000006 109000
+       fc_vcpu 0-1743666 [029] 1301062.250394: kvm_page_fault:       address 109000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250394: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250398: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000014 100000
+       fc_vcpu 0-1743666 [029] 1301062.250398: kvm_page_fault:       address 100000 error_code 14
+       fc_vcpu 0-1743666 [029] 1301062.250399: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250403: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000004 105000
+       fc_vcpu 0-1743666 [029] 1301062.250403: kvm_page_fault:       address 105000 error_code 4
+       fc_vcpu 0-1743666 [029] 1301062.250404: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250408: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000014 101000
+       fc_vcpu 0-1743666 [029] 1301062.250409: kvm_page_fault:       address 101000 error_code 14
+       fc_vcpu 0-1743666 [029] 1301062.250410: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250414: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 12d000
+       fc_vcpu 0-1743666 [029] 1301062.250414: kvm_page_fault:       address 12d000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250417: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250421: kvm_exit:             reason UNKNOWN (144) rip 0x100000 info 80050013 0
+       fc_vcpu 0-1743666 [029] 1301062.250430: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250434: kvm_exit:             reason EXIT_NPF rip 0x100000 info 600000006 107000
+       fc_vcpu 0-1743666 [029] 1301062.250434: kvm_page_fault:       address 107000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250435: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250439: kvm_exit:             reason EXIT_NPF rip 0x100000 info 600000006 108000
+       fc_vcpu 0-1743666 [029] 1301062.250439: kvm_page_fault:       address 108000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250440: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250444: kvm_exit:             reason EXIT_NPF rip 0x100000 info 600000006 109000
+       fc_vcpu 0-1743666 [029] 1301062.250444: kvm_page_fault:       address 109000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250444: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250448: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000014 101000
+       fc_vcpu 0-1743666 [029] 1301062.250448: kvm_page_fault:       address 101000 error_code 14
+       fc_vcpu 0-1743666 [029] 1301062.250449: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250453: kvm_exit:             reason UNKNOWN (148) rip 0x100000 info 40660 0
+       fc_vcpu 0-1743666 [029] 1301062.250454: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250458: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000004 12d000
+       fc_vcpu 0-1743666 [029] 1301062.250458: kvm_page_fault:       address 12d000 error_code 4
+       fc_vcpu 0-1743666 [029] 1301062.250459: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250463: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000004 105000
+       fc_vcpu 0-1743666 [029] 1301062.250463: kvm_page_fault:       address 105000 error_code 4
+       fc_vcpu 0-1743666 [029] 1301062.250463: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250467: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000004 10d000
+       fc_vcpu 0-1743666 [029] 1301062.250467: kvm_page_fault:       address 10d000 error_code 4
+       fc_vcpu 0-1743666 [029] 1301062.250468: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250473: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 10a000
+       fc_vcpu 0-1743666 [029] 1301062.250473: kvm_page_fault:       address 10a000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250475: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250480: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 10b000
+       fc_vcpu 0-1743666 [029] 1301062.250480: kvm_page_fault:       address 10b000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250483: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250487: kvm_exit:             reason EXIT_NPF rip 0x100000 info 500000006 10c000
+       fc_vcpu 0-1743666 [029] 1301062.250488: kvm_page_fault:       address 10c000 error_code 6
+       fc_vcpu 0-1743666 [029] 1301062.250490: kvm_entry:            vcpu 0, rip 0x100000
+       fc_vcpu 0-1743666 [029] 1301062.250495: kvm_exit:             reason EXIT_SHUTDOWN rip 0x100000 info 0 0
+       fc_vcpu 0-1743666 [029] 1301062.250496: kvm_fpu:              unload
+       fc_vcpu 0-1743666 [029] 1301062.250497: kvm_userspace_exit:   reason KVM_EXIT_UNKNOWN (0)
+       fc_vcpu 0-1743666 [029] 1301062.250707: kvm_unmap_hva_range:  mmu notifier unmap range: 0x007facb80c3000 -- 0x007facb80c6000
+       fc_vcpu 0-1743666 [029] 1301062.250742: kvm_unmap_hva_range:  mmu notifier unmap range: 0x007facb7ebd000 -- 0x007facb7ec0000
+     firecracker-1743662 [026] 1301062.250757: kvm_unmap_hva_range:  mmu notifier unmap range: 0x007facb7ec0000 -- 0x007facb80c3000
