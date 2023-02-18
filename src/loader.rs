@@ -11,11 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::{
-    boot::Header,
-    boot::HEADER_START,
-    mem::MemoryRegion,
-};
+use crate::{boot::Header, boot::HEADER_START, mem::MemoryRegion};
+use x86_64::instructions::port::Port;
 
 #[derive(Debug)]
 pub enum Error {
@@ -23,20 +20,20 @@ pub enum Error {
     NotRelocatable,
 }
 
-pub const KERNEL_LOAD: u32 = 0x40_0000;
+pub const KERNEL_LOAD: u32 = 0x400_000;
 const ZERO_PAGE_START: u64 = 0x7000;
 pub const HASH_SIZE_BYTES: u64 = 32;
 pub const CMDLINE_START: u64 = 0x20000;
 
 pub struct Kernel {
-    pub hdr: Header, 
+    pub hdr: Header,
     pub entry_point: u64,
 }
 
 impl Kernel {
     pub fn new() -> Self {
         let kernel = Self {
-            hdr: Header::default(), 
+            hdr: Header::default(),
             entry_point: 0,
         };
         kernel
@@ -44,10 +41,16 @@ impl Kernel {
 
     pub fn write_params(&mut self) {
         let params_addr = &mut self.hdr as *mut _ as u64;
-        let mut params_region = MemoryRegion::new(params_addr, core::mem::size_of::<Header>() as u64);
-        let mut zero_page = MemoryRegion::new(ZERO_PAGE_START + HEADER_START as u64, core::mem::size_of::<Header>() as u64);
+        let mut params_region =
+            MemoryRegion::new(params_addr, core::mem::size_of::<Header>() as u64);
+        let mut zero_page = MemoryRegion::new(
+            ZERO_PAGE_START + HEADER_START as u64,
+            core::mem::size_of::<Header>() as u64,
+        );
 
-        zero_page.as_bytes().copy_from_slice(&params_region.as_bytes());
+        zero_page
+            .as_bytes()
+            .copy_from_slice(&params_region.as_bytes());
     }
 
     pub fn load_bzimage_from_payload(&mut self, kernel: &mut MemoryRegion) -> Result<(), Error> {
@@ -64,7 +67,6 @@ impl Kernel {
         if self.hdr.version < 0x205 || self.hdr.relocatable_kernel == 0 {
             return Err(Error::NotRelocatable);
         }
-        
 
         // Skip over the setup sectors
         let setup_sects = match self.hdr.setup_sects {
@@ -73,26 +75,28 @@ impl Kernel {
         };
 
         let setup_bytes = (setup_sects + 1) * 512;
-    
+
         self.hdr.type_of_loader = 0xff;
         self.hdr.code32_start = KERNEL_LOAD + setup_bytes;
         self.hdr.cmd_line_ptr = CMDLINE_START as u32;
         self.entry_point = self.hdr.code32_start as u64 + 0x200;
-    
+
+        let mut port = Port::new(0x80);
+        unsafe { port.write(0x90u8) };
+
         self.write_params();
 
         Ok(())
     }
 
     pub fn boot(&mut self) {
-
         let jump_address = self.entry_point;
-        #[cfg(debug_assertions)]
+
         log!("Jumping to: 0x{:x}", jump_address);
 
         // Rely on x86 C calling convention where second argument is put into %rsi register
         let ptr = jump_address as *const ();
         let code: extern "C" fn(u64, u64) = unsafe { core::mem::transmute(ptr) };
-        (code)(0 /* dummy value */, ZERO_PAGE_START );
+        (code)(0 /* dummy value */, ZERO_PAGE_START);
     }
 }

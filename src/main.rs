@@ -19,24 +19,29 @@
 #![cfg_attr(not(feature = "log-serial"), allow(unused_variables, unused_imports))]
 
 use core::panic::PanicInfo;
-use x86_64::{instructions::hlt, registers::{control::{ Cr4, Cr4Flags, Cr0, Cr0Flags}, xcontrol::{XCr0, XCr0Flags}}};
+use x86_64::{
+    instructions::hlt,
+    instructions::port::Port,
+    registers::{
+        control::{Cr0, Cr0Flags, Cr4, Cr4Flags},
+        xcontrol::{XCr0, XCr0Flags},
+    },
+};
 #[macro_use]
-#[cfg(debug_assertions)]
 mod serial;
 
 #[macro_use]
 mod asm;
 mod boot;
-mod loader;
-mod gdt;
-mod mem;
-mod paging;
 mod elf;
 mod fw_cfg;
+mod gdt;
+mod loader;
+mod mem;
+mod paging;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    #[cfg(debug_assertions)]
     log!("PANIC: {}", _info);
     loop {
         hlt()
@@ -75,16 +80,18 @@ pub extern "C" fn rust64_start() {
 
 fn main() -> ! {
     //align stack
-    unsafe{core::arch::asm!("push rax")};
+    unsafe { core::arch::asm!("push rax") };
     //initialize logger
-    #[cfg(debug_assertions)]
     serial::PORT.borrow_mut().init();
     //set control registers
     enable_sse();
     //enable paging/SEV
+    let mut debug_port = Port::<u8>::new(0x80);
+    unsafe { debug_port.write(0x50u8) };
     paging::setup();
-
+    unsafe { debug_port.write(0x51u8) };
     let mut loader = fw_cfg::FwCfg::new();
+    unsafe { debug_port.write(0x52u8) };
     loader.load_kernel().unwrap();
 
     panic!("Shouldn't reach here")

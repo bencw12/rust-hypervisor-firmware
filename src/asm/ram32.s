@@ -3,45 +3,15 @@
 .code32
 
 ram32_start:
-    # Tracepoint for Cloud Hypervisor
+	# Tracepoint for Cloud Hypervisor
+    movl $0, (BZIMAGE_LEN+4)
+    movl %ecx, (BZIMAGE_LEN)
     movl $0x31, %eax
     outb $0x80
 
 # begin SEV code
 check_sev_feature:
-    # clear ebx to be safe because it will be used to get C bit position
-    xor  %ebx, %ebx
-    # Check if we have a valid (0x8000_001F) CPUID leaf
-    movl $0x80000000, %eax
-    cpuid
-
-    # This should fail on non SEV CPUs
-    cmpl $0x8000001f, %eax 
-    jl   no_sev
-
-    # Check for memory encryption feature:
-    # CPUID Fn8000_001F[EAX] - Bit 1
-    movl $0x8000001f, %eax
-    cpuid
-    btl  $1, %eax
-    jnc  no_sev
-
-    # Check if memory encryption is enabled
-    # MSR+0xC0010131 - Bit 0 (SEV enabled)
-    movl $0xc0010131, %ecx
-    rdmsr
-    btl  $0, %eax 
-    jnc  no_sev
-
-    # Get pte bit position to enable memory encryption
-    # CPUID Fn8000_001F[EBX] - Bits 5:0
-    movl %ebx, %eax
-    and  $0x3f, %eax
-
-    xor  %edx, %edx
-    test %eax, %eax
-    jz   setup_page_tables
-
+    movl $51, %eax
     subl $32, %eax
     bts  %eax, %edx
     # Clear lower 32 bits of C bit
@@ -49,9 +19,6 @@ check_sev_feature:
     # Set upper 32 bits of C bit
     movl %edx, (SEV_ENC_BIT + 4)
     jmp  setup_page_tables
-
-no_sev:
-    xor  %eax, %eax
 
 setup_page_tables:
     # First L2 entry identity maps [0, 2 MiB)
@@ -85,7 +52,10 @@ enable_paging:
     # Set CRO.PG (Paging)
     movl %cr0, %eax
     orl  $(1 << 31), %eax
-    movl %eax, %cr0
+	movl %eax, %cr0
+
+    movl $0x31, %eax
+    outb $0x80
 
 jump_to_64bit:
     # We are now in 32-bit compatibility mode. To enter 64-bit mode, we need to
