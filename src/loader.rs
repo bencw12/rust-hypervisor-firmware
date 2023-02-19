@@ -20,7 +20,7 @@ pub enum Error {
     NotRelocatable,
 }
 
-pub const KERNEL_LOAD: u32 = 0x400_000;
+pub const KERNEL_LOAD: u32 = 0x200_000;
 const ZERO_PAGE_START: u64 = 0x7000;
 pub const HASH_SIZE_BYTES: u64 = 32;
 pub const CMDLINE_START: u64 = 0x20000;

@@ -21,7 +21,7 @@
 use core::panic::PanicInfo;
 use x86_64::{
     instructions::hlt,
-    instructions::port::Port,
+    //instructions::port::Port,
     registers::{
         control::{Cr0, Cr0Flags, Cr4, Cr4Flags},
         xcontrol::{XCr0, XCr0Flags},
@@ -34,7 +34,7 @@ mod serial;
 #[macro_use]
 mod asm;
 mod boot;
-mod elf;
+// mod elf;
 mod fw_cfg;
 mod gdt;
 mod loader;
@@ -90,7 +90,7 @@ fn main() -> ! {
 
     enable_sse();
     //enable paging/SEV
-    let mut debug_port = Port::<u8>::new(0x80);
+    //let mut debug_port = Port::<u8>::new(0x80);
     // unsafe { debug_port.write(0x50u8) };
     paging::setup();
     // unsafe { debug_port.write(0x51u8) };
