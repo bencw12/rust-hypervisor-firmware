@@ -1,12 +1,13 @@
-use sha2::Sha256;
+//use sha2::Sha256;
 use x86_64::instructions::port::Port;
 
 use crate::{
+    hash::Hash,
     loader::{self, Kernel},
     mem::MemoryRegion,
 };
 
-use sha2::Digest;
+//use sha2::Digest;
 
 // const DEBUG_PORT: u16 = 0x80;
 const FW_CFG_REG: u16 = 0x81;
@@ -66,7 +67,7 @@ pub(crate) struct FwCfg {
     _bounce_buffer: MemoryRegion,
     num_hashes: u64,
     hashes: MemoryRegion,
-    _hasher: Sha256,
+    //_hasher: Sha256,
 }
 
 impl FwCfg {
@@ -75,7 +76,7 @@ impl FwCfg {
         let _bounce_buffer = MemoryRegion::new(FW_CFG_DATA_BASE, FW_CFG_DATA_SIZE);
         let base = FW_ADDR - loader::HASH_SIZE_BYTES;
         let hashes = MemoryRegion::new(base, loader::HASH_SIZE_BYTES);
-        let _hasher = Sha256::new();
+        //let _hasher = Sha256::new();
         //Clear C bit on bounce buffer region
         //let mut debug_port = Port::<u8>::new(DEBUG_PORT);
         //unsafe { debug_port.write(0x10u8) };
@@ -94,7 +95,7 @@ impl FwCfg {
             _bounce_buffer,
             num_hashes: 1,
             hashes,
-            _hasher,
+            //_hasher,
         };
 
         fw_cfg.init();
@@ -323,14 +324,13 @@ impl FwCfg {
         load_region
             .as_bytes()
             .copy_from_slice(&kernel_region.as_bytes());
-        //unsafe { debug_port.write(0x36u8) };
-
-        //let mut hasher = Sha256::new();
+        // unsafe { debug_port.write(0x36u8) };
+        // let mut hasher = Sha256::new();
 
         // Self::debug_write(&mut debug_port, HASH_START);
-        //hasher.update(load_region.as_bytes());
-
-        //let hash = hasher.finalize();
+        // hasher.update(load_region.as_bytes());
+        // let _hash = Hash::hash(load_region.as_bytes());
+        // let _hash = hasher.finalize();
         //log!("TEST");
         //Self::debug_write(&mut debug_port, HASH_END);
 

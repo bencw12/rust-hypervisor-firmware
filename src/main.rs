@@ -37,6 +37,7 @@ mod boot;
 // mod elf;
 mod fw_cfg;
 mod gdt;
+mod hash;
 mod loader;
 mod mem;
 mod paging;
