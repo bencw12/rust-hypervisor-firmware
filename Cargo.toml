@@ -29,7 +29,7 @@ x86_64 = "0.14.10"
 atomic_refcell = "0.1.8"
 uart_16550 = "0.2.18"
 digest = "0.10.5"
-sha2 = { version = "0.10", default-features = false }
+sha2 = { git="https://github.com/bencw12/hashes", branch = "sev-es", default-features = false }
 
 [dev-dependencies]
 dirs = "4.0.0"
