@@ -17,16 +17,16 @@
 #![no_std]
 #![no_main]
 #![cfg_attr(not(feature = "log-serial"), allow(unused_variables, unused_imports))]
-
+#![feature(abi_x86_interrupt)]
 use core::panic::PanicInfo;
 use x86_64::{
-    instructions::hlt,
-    //instructions::port::Port,
+    instructions::{hlt, interrupts, port::Port},
     registers::{
         control::{Cr0, Cr0Flags, Cr4, Cr4Flags},
         xcontrol::{XCr0, XCr0Flags},
     },
 };
+
 #[macro_use]
 #[cfg(debug_assertions)]
 mod serial;
@@ -37,7 +37,8 @@ mod boot;
 // mod elf;
 mod fw_cfg;
 mod gdt;
-mod hash;
+mod ghcb;
+mod idt;
 mod loader;
 mod mem;
 mod paging;
@@ -54,7 +55,6 @@ fn panic(_info: &PanicInfo) -> ! {
 // Enable SSE2 for XMM registers (needed for EFI calling)
 fn enable_sse() {
     let mut cr0 = Cr0::read();
-    cr0.remove(Cr0Flags::EMULATE_COPROCESSOR);
     cr0.remove(Cr0Flags::EMULATE_COPROCESSOR);
     cr0.remove(Cr0Flags::TASK_SWITCHED);
     cr0.insert(Cr0Flags::MONITOR_COPROCESSOR);
@@ -82,21 +82,26 @@ pub extern "C" fn rust64_start() {
 }
 
 fn main() -> ! {
-    //align stack
+    //this aligns the stack
     unsafe { core::arch::asm!("push rax") };
+
+    interrupts::enable();
+
+    idt::init_idt();
     //initialize logger
     #[cfg(debug_assertions)]
     serial::PORT.borrow_mut().init();
     //set control registers
-
     enable_sse();
     //enable paging/SEV
-    //let mut debug_port = Port::<u8>::new(0x80);
-    // unsafe { debug_port.write(0x50u8) };
     paging::setup();
-    // unsafe { debug_port.write(0x51u8) };
+
+    let mut debug_port = Port::<u8>::new(0x80);
+    //We have to wait for paging to be set up and for the GHCB page
+    //to be registered before we do PIO, so this timestamp is a little late but
+    //signals the start of the guest firmware
+    unsafe { debug_port.write(0x31u8) };
     let mut loader = fw_cfg::FwCfg::new();
-    // unsafe { debug_port.write(0x52u8) };
     loader.load_kernel().unwrap();
 
     panic!("Shouldn't reach here")

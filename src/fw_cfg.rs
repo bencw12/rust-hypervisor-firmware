@@ -2,24 +2,23 @@
 use x86_64::instructions::port::Port;
 
 use crate::{
-    hash::Hash,
     loader::{self, Kernel},
     mem::MemoryRegion,
 };
+use sha2::Digest;
+use sha2::Sha256;
 
-//use sha2::Digest;
-
-// const DEBUG_PORT: u16 = 0x80;
+const DEBUG_PORT: u16 = 0x80;
 const FW_CFG_REG: u16 = 0x81;
 const FW_CFG_DATA_BASE: u64 = 0x200000;
 const FW_CFG_DATA_SIZE: u64 = 0x1000000;
 const FW_ADDR: u64 = 0x100000;
 
 // Debug codes
-// const COPY_START: u8 = 0x50;
-// const COPY_END: u8 = 0x51;
-// const HASH_START: u8 = 0x60;
-// const HASH_END: u8 = 0x61;
+const COPY_START: u8 = 0x50;
+const COPY_END: u8 = 0x51;
+const HASH_START: u8 = 0x60;
+const HASH_END: u8 = 0x61;
 
 #[no_mangle]
 static mut BZIMAGE_LEN: [u64; 1] = [0];
@@ -44,9 +43,9 @@ enum KernelType {
     //Elf,
 }
 
-// enum Error {
-//     HashMismatch,
-// }
+enum Error {
+    HashMismatch,
+}
 
 // impl Into<u32> for Command {
 //     fn into(self) -> u32 {
@@ -292,52 +291,29 @@ impl FwCfg {
 
     pub fn load_bzimage(&mut self) -> Result<(), &'static str> {
         //Load bzImage
-        // let mut debug_port = Port::<u8>::new(DEBUG_PORT);
-        // unsafe { debug_port.write(0x60u8) };
+
         let bzimage_len = unsafe { BZIMAGE_LEN[0] };
-        //let bzimage_len = self.do_command(Command::BzImageLen);
-        //copy the bzimage to encrypted memory after bounce buffer region
         //load the kernel at 2mib
         const KERNEL_LOAD: u64 = 0x200000;
-        //hypervisor puts kernel at 16mib
+        //Firecracker puts kernel at 16mib
         const KERNEL_ADDR: u64 = 0x1000000;
         let mut kernel_region = MemoryRegion::new(KERNEL_ADDR, bzimage_len.into());
-
-        //log!("TEST, 0x{:x}", bzimage_len);
-        // Self::debug_write(&mut debug_port, 0x61);
-
-        //copy bzimage from plain text to encrypted memory
-        // kernel_region
-        //     .as_bytes()
-        //     .copy_from_slice(&self.bounce_buffer.as_bytes()[..bzimage_len as usize]);
-        //set the C bit on bounce buffer again
-        // paging::set_or_clear_enc_bit(
-        //     PhysAddr::new(FW_CFG_DATA_BASE),
-        //     FW_CFG_DATA_SIZE,
-        //     true,
-        //     paging::EncBitMode::Set,
-        // );
-
         let mut load_region = MemoryRegion::new(KERNEL_LOAD, bzimage_len.into());
 
         //copy kernel from kernel_addr to kernel_load
+        Self::debug_write(COPY_START);
         load_region
             .as_bytes()
             .copy_from_slice(&kernel_region.as_bytes());
-        // unsafe { debug_port.write(0x36u8) };
-        // let mut hasher = Sha256::new();
+        Self::debug_write(COPY_END);
 
-        // Self::debug_write(&mut debug_port, HASH_START);
-        // hasher.update(load_region.as_bytes());
-        // let _hash = Hash::hash(load_region.as_bytes());
-        // let _hash = hasher.finalize();
-        //log!("TEST");
-        //Self::debug_write(&mut debug_port, HASH_END);
-
-        //Self::validate_hash(&hash, &self.hashes.as_bytes())
-        //    .map_err(|_| "bzImage verification failed")?;
-        //#[cfg(debug_assertions)]
-        //log!("BzImage verification succeeded");
+        Self::debug_write(HASH_START);
+        let mut hasher = Sha256::new();
+        hasher.update(load_region.as_bytes());
+        let hash = hasher.finalize();
+        Self::validate_hash(&hash, &self.hashes.as_bytes())
+            .map_err(|_| "bzImage verification failed")?;
+        Self::debug_write(HASH_END);
 
         let mut kernel = Kernel::new();
 
@@ -355,16 +331,17 @@ impl FwCfg {
     //     unsafe { self.cmd_reg.read() }
     // }
 
-    // fn debug_write(debug_reg: &mut Port<u8>, val: u8) {
-    //     unsafe { debug_reg.write(val) }
-    // }
+    fn debug_write(val: u8) {
+        let mut debug_port = Port::<u8>::new(DEBUG_PORT);
+        unsafe { debug_port.write(val) }
+    }
 
-    // fn validate_hash(new_hash: &[u8], old_hash: &[u8]) -> Result<(), Error> {
-    //     for i in 0..loader::HASH_SIZE_BYTES as usize {
-    //         if new_hash[i] != old_hash[i] {
-    //             return Err(Error::HashMismatch);
-    //         }
-    //     }
-    //     Ok(())
-    // }
+    fn validate_hash(new_hash: &[u8], old_hash: &[u8]) -> Result<(), Error> {
+        for i in 0..loader::HASH_SIZE_BYTES as usize {
+            if new_hash[i] != old_hash[i] {
+                return Err(Error::HashMismatch);
+            }
+        }
+        Ok(())
+    }
 }

@@ -4,10 +4,11 @@ use x86_64::{
     PhysAddr,
 };
 
+use crate::ghcb;
+
 // Amount of memory we identity map in setup(), max 512 GiB.
 const ADDRESS_SPACE_GIB: usize = 4;
 const TABLE: PageTable = PageTable::new();
-
 // Put the Page Tables in static muts to make linking easier
 #[no_mangle]
 static mut L4_TABLE: PageTable = PageTable::new();
@@ -33,9 +34,9 @@ pub fn setup() {
     let mut next_addr = PhysAddr::new(0);
     for l2 in l2s.iter_mut() {
         for l2e in l2.iter_mut() {
-            //leave C-bit clear on [16MB, 32MB)
+            //leave C-bit clear on [16MB, 34MB) (8 pages for bzimage and 1 page for GHCB)
             let addr = if (next_addr.as_u64() >= 8 * Size2MiB::SIZE)
-                && (next_addr.as_u64() < (Size2MiB::SIZE * 16))
+                && (next_addr.as_u64() <= ghcb::GHCB_ADDR)
             {
                 PhysAddr::new(next_addr.as_u64())
             } else {
@@ -64,6 +65,8 @@ pub fn setup() {
     if cr3_frame != l4_frame {
         unsafe { Cr3::write(l4_frame, cr3_flags) };
     }
+
+    ghcb::register_ghcb_page();
 }
 
 // Map a virtual address to a PhysAddr (assumes identity mapping)
