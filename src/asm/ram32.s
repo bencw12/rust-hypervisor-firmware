@@ -194,28 +194,3 @@ jump_to_64bit:
 error:
 	hlt
 	jmp error
-
-validate_ghcb:
-	movl $0x2000000, %eax
-pvalidate_ghcb:
-	# page size, 0 = 4k, 1 = 2mb
-	movl $0, %ecx
-	# valid bit
-	movl $1, %edx
-
-	pvalidate
-	
-	# get carry flag
-	setc %dl
-
-	# check for success (0)
-	cmp  $0, %eax
-	jne  error
-	
-	# check if rmp was actually updated (CF = 0)
-	cmp  $0, %dl
-	jne   error
-
-pvalidate_ghcb_done:
-	xor	 %eax, %eax
-	xor  %edi, %edi
