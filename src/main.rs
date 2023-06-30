@@ -27,8 +27,14 @@ use x86_64::{
     },
 };
 
+use crate::{
+    boot::boot_e820_entry,
+    loader::{E820_ENTRIES_OFFSET, E820_TABLE_OFFSET, ZERO_PAGE_START},
+    mem::MemoryRegion,
+};
+
 #[macro_use]
-#[cfg(debug_assertions)]
+// #[cfg(debug_assertions)]
 mod serial;
 
 #[macro_use]
@@ -77,32 +83,51 @@ fn enable_sse() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust64_start() {
-    main()
+pub extern "C" fn rust64_start(kernel_len: u32, stack_start: u32) {
+    main(kernel_len, stack_start)
 }
 
-fn main() -> ! {
+fn main(kernel_len: u32, stack_start: u32) -> ! {
     //this aligns the stack
     unsafe { core::arch::asm!("push rax") };
 
-    interrupts::enable();
-
-    idt::init_idt();
-    //initialize logger
-    #[cfg(debug_assertions)]
-    serial::PORT.borrow_mut().init();
-    //set control registers
     enable_sse();
-    //enable paging/SEV
-    paging::setup();
 
+    interrupts::enable();
+    idt::init_idt();
+
+    //set up paging so we can have encrypted memory
+    paging::setup(true);
+
+    //set up ghcb so we can do writes to ports
+    ghcb::register_ghcb_page();
+
+    //signal firmware start, although a bit late this is the earliest we can do it
     let mut debug_port = Port::<u8>::new(0x80);
-    //We have to wait for paging to be set up and for the GHCB page
-    //to be registered before we do PIO, so this timestamp is a little late but
-    //signals the start of the guest firmware
     unsafe { debug_port.write(0x31u8) };
+
+    //read the e820 entries so we know what memory to validate
+    let e820_entries_reg = MemoryRegion::new(ZERO_PAGE_START + E820_ENTRIES_OFFSET, 1);
+    let num_e820_entries = e820_entries_reg.read_u8(0);
+
+    let mut e820_table_reg = MemoryRegion::new(
+        ZERO_PAGE_START + E820_TABLE_OFFSET,
+        num_e820_entries as u64 * core::mem::size_of::<boot_e820_entry>() as u64,
+    );
+
+    let e820_entries =
+        unsafe { core::mem::transmute::<_, &mut [boot_e820_entry]>(e820_table_reg.as_bytes()) };
+
+    for i in 0..num_e820_entries as usize {
+        //if its a ram entry validate checking for overlaps
+        if e820_entries[i].type_ == 1 {
+            paging::pvalidate_ram(&e820_entries[i], stack_start as u64, true);
+        }
+    }
+
     let mut loader = fw_cfg::FwCfg::new();
-    loader.load_kernel().unwrap();
+
+    loader.load_kernel(kernel_len).unwrap();
 
     panic!("Shouldn't reach here")
 }

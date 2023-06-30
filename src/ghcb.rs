@@ -2,9 +2,10 @@ use x86_64::structures::paging::{PageSize, Size2MiB};
 
 use crate::mem::MemoryRegion;
 
-pub const GHCB_ADDR: u64 = 16 * Size2MiB::SIZE;
+#[no_mangle]
+pub static GHCB_ADDR: u32 = 16 * Size2MiB::SIZE as u32;
 pub const GHCB_MSR: u32 = 0xC001_0130;
-
+// pub const SEV_STATUS_MSR: u32 = 0xC001_0131;
 #[derive(Clone, Copy, Debug)]
 #[repr(C, packed)]
 //The ghcb page
@@ -38,49 +39,53 @@ pub struct Ghcb {
     ghcb_usage: u32,
 }
 
-static mut GHCB: Ghcb = Ghcb::new();
-static mut GHCB_PAGE: MemoryRegion =
-    MemoryRegion::new(GHCB_ADDR, core::mem::size_of::<Ghcb>() as u64);
+pub static mut GHCB_PAGE: MemoryRegion =
+    MemoryRegion::new(GHCB_ADDR as u64, core::mem::size_of::<Ghcb>() as u64);
+
+pub fn page_state_change(addr: u64, len: u64, private: bool) {
+    let mut ghcb_msr = x86_64::registers::model_specific::Msr::new(GHCB_MSR);
+    let mut len_aligned = if len & !0xfff > len {
+        (len & !0xfff) + 0x1000
+    } else {
+        len
+    };
+    let mut addr = addr;
+    while len_aligned > 0 {
+        let mut value = if private { 1 << 52 } else { 2 << 52 };
+        value |= addr & !0xfff;
+        value |= 0x014;
+
+        unsafe { ghcb_msr.write(value) };
+
+        unsafe {
+            core::arch::asm!("rep; vmmcall\n\r");
+        }
+
+        len_aligned -= 0x1000;
+        addr += 0x1000;
+    }
+}
 
 pub fn register_ghcb_page() {
     let mut ghcb_msr = x86_64::registers::model_specific::Msr::new(GHCB_MSR);
-    //write GPA of GHCB page to GHCB MSR
-    unsafe { ghcb_msr.write(GHCB_ADDR) };
+
+    unsafe { ghcb_msr.write(GHCB_ADDR as u64 | 0x12) };
+
+    vmgexit();
+
+    //TODO check response
+    let _response = unsafe { ghcb_msr.read() };
+
+    unsafe { ghcb_msr.write(GHCB_ADDR as u64) };
+}
+
+pub fn vmgexit() {
+    unsafe {
+        core::arch::asm!("rep; vmmcall\n\r");
+    }
 }
 
 impl Ghcb {
-    #[inline]
-    const fn new() -> Self {
-        Ghcb {
-            reserved1: [0u8; 0xcb],
-            cpl: 0u8,
-            reserved2: [0u8; 0x74],
-            xss: 0u64,
-            reserved3: [0u8; 0x18],
-            dr7: 0u64,
-            reserved4: [0u8; 0x90],
-            rax: 0u64,
-            reserved5: [0u8; 0x100],
-            reserved6: 0u64,
-            rcx: 0,
-            rdx: 0,
-            rbx: 0,
-            reserved7: [0u8; 0x70],
-            sw_exitcode: 0,
-            sw_exitinfo1: 0,
-            sw_exitinfo2: 0,
-            sw_scratch: 0,
-            reserved8: [0; 0x38],
-            xcr0: 0,
-            valid_bitmap: [0; 0x10],
-            x86_state_gpa: 0,
-            reserved9: [0; 0x3f8],
-            shared_buf: [0; 0x7f0],
-            reserved10: [0; 0x0a],
-            protocol_version: 0,
-            ghcb_usage: 0,
-        }
-    }
     //Write ghcb struct to ghcb page
     pub fn port_io(port: u16, value: u8) {
         let rax: u64 = value as u64;
@@ -106,44 +111,35 @@ impl Ghcb {
         let scratch_byte_offset: usize = scratch_offset / 8;
         let scratch_bit_position: usize = scratch_byte_offset % 8;
 
-        unsafe {
-            //rax is the value we're writing to the port
-            GHCB.protocol_version = 2;
-            GHCB.rax = rax;
-            GHCB.sw_exitcode = 0x7b;
-            GHCB.sw_exitinfo1 = exitinfo1;
-            GHCB.sw_exitinfo2 = 0;
-            GHCB.sw_scratch = 0;
-            GHCB.valid_bitmap = [0x0u8; 16];
-            GHCB.ghcb_usage = 0;
+        let ghcb = unsafe { core::mem::transmute::<_, &mut Ghcb>(GHCB_PAGE.as_bytes().as_ptr()) };
 
-            //set valid bits
-            GHCB.valid_bitmap[rax_byte_offset as usize] =
-                GHCB.valid_bitmap[rax_byte_offset as usize] | (1 << rax_bit_position as usize);
+        //rax is the value we're writing to the port
+        ghcb.protocol_version = 2;
+        ghcb.rax = rax;
+        ghcb.sw_exitcode = 0x7b;
+        ghcb.sw_exitinfo1 = exitinfo1;
+        ghcb.sw_exitinfo2 = 0;
+        ghcb.sw_scratch = 0;
+        ghcb.valid_bitmap = [0x0u8; 16];
+        ghcb.ghcb_usage = 0;
 
-            GHCB.valid_bitmap[exitcode_byte_offset as usize] = GHCB.valid_bitmap
-                [exitcode_byte_offset as usize]
-                | (1 << exitcode_bit_position as usize);
+        //set valid bits
+        ghcb.valid_bitmap[rax_byte_offset as usize] =
+            ghcb.valid_bitmap[rax_byte_offset as usize] | (1 << rax_bit_position as usize);
 
-            GHCB.valid_bitmap[exitinfo1_byte_offset as usize] = GHCB.valid_bitmap
-                [exitinfo1_byte_offset as usize]
-                | (1 << exitinfo1_bit_position as usize);
+        ghcb.valid_bitmap[exitcode_byte_offset as usize] = ghcb.valid_bitmap
+            [exitcode_byte_offset as usize]
+            | (1 << exitcode_bit_position as usize);
 
-            GHCB.valid_bitmap[exitinfo2_byte_offset as usize] = GHCB.valid_bitmap
-                [exitinfo2_byte_offset as usize]
-                | (1 << exitinfo2_bit_position as usize);
+        ghcb.valid_bitmap[exitinfo1_byte_offset as usize] = ghcb.valid_bitmap
+            [exitinfo1_byte_offset as usize]
+            | (1 << exitinfo1_bit_position as usize);
 
-            GHCB.valid_bitmap[scratch_byte_offset as usize] = GHCB.valid_bitmap
-                [scratch_byte_offset as usize]
-                | (1 << scratch_bit_position as usize);
+        ghcb.valid_bitmap[exitinfo2_byte_offset as usize] = ghcb.valid_bitmap
+            [exitinfo2_byte_offset as usize]
+            | (1 << exitinfo2_bit_position as usize);
 
-            //write ghcb to reserved page
-            GHCB_PAGE
-                .as_bytes()
-                .copy_from_slice(core::slice::from_raw_parts(
-                    (&GHCB as *const Ghcb) as *const u8,
-                    core::mem::size_of::<Ghcb>(),
-                ));
-        }
+        ghcb.valid_bitmap[scratch_byte_offset as usize] =
+            ghcb.valid_bitmap[scratch_byte_offset as usize] | (1 << scratch_bit_position as usize);
     }
 }

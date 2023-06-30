@@ -11,8 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::{boot::Header, boot::HEADER_START, mem::MemoryRegion};
-// use x86_64::instructions::port::Port;
+use crate::{
+    boot::{CCBlob, HEADER_START, SETUP_CC_BLOB},
+    boot::{Header, SetupData},
+    mem::MemoryRegion,
+};
 
 #[derive(Debug)]
 pub enum Error {
@@ -21,9 +24,13 @@ pub enum Error {
 }
 
 pub const KERNEL_LOAD: u32 = 0x200_000;
-const ZERO_PAGE_START: u64 = 0x7000;
+pub const ZERO_PAGE_START: u64 = 0x7000;
 pub const HASH_SIZE_BYTES: u64 = 32;
 pub const CMDLINE_START: u64 = 0x20000;
+pub const E820_ENTRIES_OFFSET: u64 = 0x1e8;
+pub const E820_TABLE_OFFSET: u64 = 0x2d0;
+pub const CPUID_PAGE_ADDR: u64 = 0x1000;
+pub const CPUID_PAGE_LEN: u64 = 0x1000;
 
 pub struct Kernel {
     pub hdr: Header,
@@ -63,7 +70,6 @@ impl Kernel {
             return Err(Error::MagicMissing);
         }
         // Check relocatable
-
         if self.hdr.version < 0x205 || self.hdr.relocatable_kernel == 0 {
             return Err(Error::NotRelocatable);
         }
@@ -81,8 +87,49 @@ impl Kernel {
         self.hdr.cmd_line_ptr = CMDLINE_START as u32;
         self.entry_point = self.hdr.code32_start as u64 + 0x200;
 
-        // let mut port = Port::new(0x80);
-        // unsafe { port.write(0x90u8) };
+        if self.hdr.setup_data == 0 {
+            const SETUP_DATA_LEN: u64 = core::mem::size_of::<SetupData>() as u64;
+            const CCBLOB_LEN: u64 = core::mem::size_of::<CCBlob>() as u64;
+            const CCBLOB_MAGIC: u32 = 0x45444d41;
+            //end of the zero page
+            let setup_data_addr = (ZERO_PAGE_START + CPUID_PAGE_LEN) - SETUP_DATA_LEN - CCBLOB_LEN;
+            let cc_blob_addr = ((ZERO_PAGE_START + CPUID_PAGE_LEN) - CCBLOB_LEN) as u32;
+
+            let setup_data = SetupData {
+                next: 0,              //only setup data node in the list
+                _type: SETUP_CC_BLOB, //CC setup data blob type
+                len: 4,               //4 bytes because cc_blob_addr is u32
+                cc_blob_addr,
+            };
+
+            let cc_blob = CCBlob {
+                magic: CCBLOB_MAGIC,
+                version: 0,
+                reserved: 0,
+                secrets_phys: 0,
+                secrets_len: 0,
+                reserved1: 0,
+                cpuid_phys: CPUID_PAGE_ADDR,
+                cpuid_len: 4096,
+                reserved2: 0,
+            };
+
+            let mut setup_data_region =
+                MemoryRegion::new(setup_data_addr as u64, SETUP_DATA_LEN as u64);
+
+            setup_data_region
+                .as_mut_slice(0, SETUP_DATA_LEN as u64)
+                .copy_from_slice(&setup_data.as_slice());
+
+            let mut cc_blob_region = MemoryRegion::new(cc_blob_addr as u64, CCBLOB_LEN as u64);
+
+            cc_blob_region
+                .as_mut_slice(0, CCBLOB_LEN as u64)
+                .copy_from_slice(&cc_blob.as_slice());
+
+            //point to the node
+            self.hdr.setup_data = setup_data_addr as u64;
+        }
 
         self.write_params();
 
@@ -91,8 +138,6 @@ impl Kernel {
 
     pub fn boot(&mut self) {
         let jump_address = self.entry_point;
-
-        //log!("Jumping to: 0x{:x}", jump_address);
 
         // Rely on x86 C calling convention where second argument is put into %rsi register
         let ptr = jump_address as *const ();
