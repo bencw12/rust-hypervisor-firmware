@@ -98,8 +98,13 @@ pub fn pvalidate_ram(
     const STACK_SIZE: u64 = 0x20000;
     size = size & !0xfff;
 
-    let mut npgs = size >> 12;
+    //we might go too far so make signed
+    let mut npgs = (size >> 12) as i64;
     let mut start_pg = start >> 12;
+
+
+    let mut debug_port = Port::<u8>::new(0x80);
+
 
     while npgs > 0 {
         // skip cpuid page
@@ -125,7 +130,7 @@ pub fn pvalidate_ram(
         // //skip plain text kernel
         if start_pg == (KERNEL_PLAIN_TEXT >> 12) && plain_text {
             start_pg += (8 * Size2MiB::SIZE) >> 12;
-            npgs -= (8 * Size2MiB::SIZE) >> 12;
+            npgs -= ((8 * Size2MiB::SIZE) >> 12) as i64;
         }
         // //skip kernel cmdline
         if start_pg == KERNEL_CMDLINE >> 12 {
@@ -160,24 +165,62 @@ pub fn pvalidate_ram(
 
         if start_pg == (initrd_plain_text_addr >> 12) && plain_text {
             start_pg += initrd_size >> 12;
-            npgs -= initrd_size >> 12;
+            npgs -= (initrd_size >> 12) as i64;
         }
 
-        pvalidate(start_pg, 1);
+        let n = pvalidate(start_pg, 1);
 
-        start_pg += 1;
-        npgs -= 1;
+        start_pg += n;
+        // unsafe{ debug_port.write(0x55u8)};
+        npgs -= n as i64;
+        // unsafe{ debug_port.write(0x55u8)};
+
     }
 }
 
-pub fn pvalidate(start: u64, valid: u32) {
+pub fn pvalidate(start: u64, valid: u32) -> u64{
     //start is the page number (4k pages) that we are validating
     let addr = start << 12;
-    let page_size = 0;
     let mut cf: u8;
     let mut rc: u32;
+    let mut page_size = 1;
 
     let mut debug_port = Port::<u8>::new(0x80);
+
+    //try 2mb first
+    if addr & (0x200000 - 1) != 0 {
+
+        page_size = 0;
+        unsafe {
+            core::arch::asm!(
+                "pvalidate",
+                "setc dl",
+                in("rax") addr,
+                in("ecx") page_size,
+                in("edx") valid,
+                lateout("eax") rc,
+                lateout("dl") cf,
+                options(nomem, nostack)
+            );
+        }
+
+        if rc != 0 {
+            unsafe { debug_port.write(0x88 as u8) };
+            loop {
+                hlt();
+            }
+        }
+    
+        if cf != 0 {
+            unsafe { debug_port.write(0x89 as u8) };
+            loop {
+                hlt();
+            }
+        }
+
+        return 1; 
+    }
+    // unsafe { debug_port.write(addr as u8) };
 
     unsafe {
         core::arch::asm!(
@@ -192,18 +235,61 @@ pub fn pvalidate(start: u64, valid: u32) {
         );
     }
 
-    if rc == 1 {
+    // unsafe { debug_port.write(addr as u8) };
+
+
+    // if rc == 0 {
+    //     unsafe{ debug_port.write(0x77)};
+    // }
+
+    if rc == 6 {
+        // unsafe { debug_port.write(0x66 as u8) };
+        page_size = 0;
+        unsafe {
+            core::arch::asm!(
+                "pvalidate",
+                "setc dl",
+                in("rax") addr,
+                in("ecx") page_size,
+                in("edx") valid,
+                lateout("eax") rc,
+                lateout("dl") cf,
+                options(nomem, nostack)
+            );
+        }
+
+        if rc != 0 {
+            unsafe { debug_port.write(0x88 as u8) };
+            loop {
+                hlt();
+            }
+        }
+    
+        if cf != 0 {
+            unsafe { debug_port.write(0x89 as u8) };
+            loop {
+                hlt();
+            }
+        }
+
+        return 1; 
+    }
+
+    if rc != 0 {
         unsafe { debug_port.write(0x88 as u8) };
         loop {
             hlt();
         }
     }
-    if cf == 1 {
+
+    if cf != 0 {
         unsafe { debug_port.write(0x89 as u8) };
         loop {
             hlt();
         }
     }
+
+    return 512;
 }
 
 // Map a virtual address to a PhysAddr (assumes identity mapping)
