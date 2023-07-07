@@ -1,11 +1,6 @@
-use x86_64::{
-    instructions::port::Port,
-    structures::paging::{PageSize, Size2MiB},
-};
+use x86_64::instructions::port::Port;
 
 use crate::{
-    boot::boot_e820_entry,
-    ghcb,
     loader::{self, Kernel},
     mem::MemoryRegion,
     paging,
@@ -83,7 +78,6 @@ impl FwCfg {
         initrd_plain_text_addr: u64,
         initrd_load_addr: u64,
         initrd_len: u64,
-        initrd_size_aligned: u64,
     ) -> Result<(), &'static str> {
         match self.kernel_type {
             KernelType::BzImage => self.load_bzimage(
@@ -91,7 +85,6 @@ impl FwCfg {
                 initrd_plain_text_addr,
                 initrd_load_addr,
                 initrd_len,
-                initrd_size_aligned,
             )?,
         };
         Ok(())
@@ -126,7 +119,6 @@ impl FwCfg {
         initrd_plain_text_addr: u64,
         initrd_load_addr: u64,
         initrd_len: u64,
-        initrd_size_aligned: u64,
     ) -> Result<(), &'static str> {
         let bzimage_len = kernel_len as u64;
         //load the kernel at 2mib in encrypted memory
@@ -158,29 +150,8 @@ impl FwCfg {
 
         self.load_initrd(initrd_plain_text_addr, initrd_load_addr, initrd_len)?;
 
-        //set the plain text region for the kernel and the ghcb page private
-        ghcb::page_state_change(KERNEL_ADDR, KERNEL_ADDR + Size2MiB::SIZE, true);
-        //set plain text region for initrd private
-        ghcb::page_state_change(initrd_plain_text_addr, initrd_size_aligned, true);
-
         //set the C-bit everywhere
         paging::setup(false, 0, 0);
-
-        //re-validate the region we used for the plain text kernel
-        let entry = boot_e820_entry {
-            addr: KERNEL_ADDR,
-            size: KERNEL_ADDR + Size2MiB::SIZE,
-            type_: 1,
-        };
-        paging::pvalidate_ram(&entry, 0 as u64, 0, 0, false);
-
-        //re-validate the region we used for the plain text initrd
-        let entry = boot_e820_entry {
-            addr: initrd_plain_text_addr,
-            size: initrd_size_aligned,
-            type_: 1,
-        };
-        paging::pvalidate_ram(&entry, 0 as u64, 0, 0, false);
 
         kernel.boot();
 

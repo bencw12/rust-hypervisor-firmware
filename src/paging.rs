@@ -1,13 +1,9 @@
 use x86_64::{
-    instructions::hlt,
     registers::control::Cr3,
     structures::paging::{PageSize, PageTable, PageTableFlags, PhysFrame, Size2MiB},
     PhysAddr,
 };
 
-use x86_64::instructions::port::Port;
-
-use crate::boot::boot_e820_entry;
 use crate::ghcb::GHCB_ADDR;
 // Amount of memory we identity map in setup(), max 512 GiB.
 #[no_mangle]
@@ -42,11 +38,6 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
                     && (next_addr.as_u64() < initrd_plain_text_addr + initrd_size_aligned)))
                 && plain_text
             {
-                if next_addr.as_u64() == 0xed00000 {
-                    loop {
-                        hlt();
-                    }
-                }
                 PhysAddr::new(next_addr.as_u64())
             } else {
                 PhysAddr::new(next_addr.as_u64() | SEV_ENC_BIT)
@@ -73,136 +64,6 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
     let l4_frame = PhysFrame::from_start_address(phys_addr(l4)).unwrap();
     if cr3_frame != l4_frame {
         unsafe { Cr3::write(l4_frame, cr3_flags) };
-    }
-}
-
-pub fn pvalidate_ram(
-    e820_entry: &boot_e820_entry,
-    stack_start: u64,
-    initrd_plain_text_addr: u64,
-    initrd_size: u64,
-    plain_text: bool,
-) {
-    let start = e820_entry.addr;
-    let mut size = e820_entry.size;
-
-    assert!(start & 0xfff == 0);
-
-    const CPUID_PAGE_ADDR: u64 = 0x1000; // 4K
-    const ZERO_PAGE_START: u64 = 0x7000; // 28K
-    const FIRMWARE_START: u64 = 0x100000; // 1M
-    const KERNEL_HASH_START: u64 = FIRMWARE_START - 0x1000; //1M - 4K
-    const KERNEL_PLAIN_TEXT: u64 = 0x1000000; // 16M
-    const KERNEL_CMDLINE: u64 = 0x20000; //128K
-    const GHCB_PAGE: u64 = 0x2000000; // 32M
-    const STACK_SIZE: u64 = 0x20000;
-    size = size & !0xfff;
-
-    let mut npgs = size >> 12;
-    let mut start_pg = start >> 12;
-
-    while npgs > 0 {
-        // skip cpuid page
-        if start_pg == CPUID_PAGE_ADDR >> 12 {
-            start_pg += 1;
-            npgs -= 1;
-        }
-        // //skip zero page
-        if start_pg == ZERO_PAGE_START >> 12 {
-            start_pg += 1;
-            npgs -= 1;
-        }
-        // //skip hash
-        if start_pg == KERNEL_HASH_START >> 12 {
-            start_pg += 1;
-            npgs -= 1;
-        }
-        // //skip firmware
-        if start_pg == FIRMWARE_START >> 12 {
-            start_pg += 4;
-            npgs -= 4;
-        }
-        // //skip plain text kernel
-        if start_pg == (KERNEL_PLAIN_TEXT >> 12) && plain_text {
-            start_pg += (8 * Size2MiB::SIZE) >> 12;
-            npgs -= (8 * Size2MiB::SIZE) >> 12;
-        }
-        // //skip kernel cmdline
-        if start_pg == KERNEL_CMDLINE >> 12 {
-            start_pg += 1;
-            npgs -= 1;
-        }
-        // //skip over ghcb page if
-        if start_pg == (GHCB_PAGE >> 12) && plain_text {
-            start_pg += 512;
-            npgs -= 512;
-        }
-
-        //skip over page tables this works because this is the order they're defined in
-        if start_pg == unsafe { &L4_TABLE as *const _ as u64 } >> 12 {
-            start_pg += 1;
-            npgs -= 1;
-        }
-        if start_pg == unsafe { &L3_TABLE as *const _ as u64 } >> 12 {
-            start_pg += 1;
-            npgs -= 1;
-        }
-        if start_pg == unsafe { L2_TABLES.as_ptr() as *const _ as u64 } >> 12 {
-            start_pg += 1;
-            npgs -= 1;
-        }
-        // skip stack
-        // the stack is 128k from layout.ld
-        if start_pg == (stack_start - STACK_SIZE) >> 12 {
-            start_pg += 128 / 4;
-            npgs -= 128 / 4;
-        }
-
-        if start_pg == (initrd_plain_text_addr >> 12) && plain_text {
-            start_pg += initrd_size >> 12;
-            npgs -= initrd_size >> 12;
-        }
-
-        pvalidate(start_pg, 1);
-
-        start_pg += 1;
-        npgs -= 1;
-    }
-}
-
-pub fn pvalidate(start: u64, valid: u32) {
-    //start is the page number (4k pages) that we are validating
-    let addr = start << 12;
-    let page_size = 0;
-    let mut cf: u8;
-    let mut rc: u32;
-
-    let mut debug_port = Port::<u8>::new(0x80);
-
-    unsafe {
-        core::arch::asm!(
-            "pvalidate",
-            "setc dl",
-            in("rax") addr,
-            in("ecx") page_size,
-            in("edx") valid,
-            lateout("eax") rc,
-            lateout("dl") cf,
-            options(nomem, nostack)
-        );
-    }
-
-    if rc == 1 {
-        unsafe { debug_port.write(0x88 as u8) };
-        loop {
-            hlt();
-        }
-    }
-    if cf == 1 {
-        unsafe { debug_port.write(0x89 as u8) };
-        loop {
-            hlt();
-        }
     }
 }
 

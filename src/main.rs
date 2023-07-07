@@ -28,12 +28,6 @@ use x86_64::{
     structures::paging::{PageSize, Size2MiB},
 };
 
-use crate::{
-    boot::boot_e820_entry,
-    loader::{E820_ENTRIES_OFFSET, E820_TABLE_OFFSET, ZERO_PAGE_START},
-    mem::MemoryRegion,
-};
-
 #[macro_use]
 // #[cfg(debug_assertions)]
 mod serial;
@@ -84,11 +78,11 @@ fn enable_sse() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust64_start(kernel_len: u32, stack_start: u32) {
-    main(kernel_len, stack_start)
+pub extern "C" fn rust64_start(kernel_len: u32) {
+    main(kernel_len)
 }
 
-fn main(kernel_len: u32, stack_start: u32) -> ! {
+fn main(kernel_len: u32) -> ! {
     let initrd_len;
     let initrd_load_addr: u64;
     //Firecracker stashes memory size and initrd_len in r14 and r15 respectively
@@ -125,31 +119,6 @@ fn main(kernel_len: u32, stack_start: u32) -> ! {
         debug_port.write(0x31u8);
     };
 
-    //read the e820 entries so we know what memory to validate
-    let e820_entries_reg = MemoryRegion::new(ZERO_PAGE_START + E820_ENTRIES_OFFSET, 1);
-    let num_e820_entries = e820_entries_reg.read_u8(0);
-
-    let mut e820_table_reg = MemoryRegion::new(
-        ZERO_PAGE_START + E820_TABLE_OFFSET,
-        num_e820_entries as u64 * core::mem::size_of::<boot_e820_entry>() as u64,
-    );
-
-    let e820_entries =
-        unsafe { core::mem::transmute::<_, &mut [boot_e820_entry]>(e820_table_reg.as_bytes()) };
-
-    for i in 0..num_e820_entries as usize {
-        //if its a ram entry validate checking for overlaps
-        if e820_entries[i].type_ == 1 {
-            paging::pvalidate_ram(
-                &e820_entries[i],
-                stack_start as u64,
-                initrd_plain_text_addr,
-                initrd_size_aligned,
-                true,
-            );
-        }
-    }
-
     let mut loader = fw_cfg::FwCfg::new();
 
     loader
@@ -158,7 +127,6 @@ fn main(kernel_len: u32, stack_start: u32) -> ! {
             initrd_plain_text_addr,
             initrd_load_addr,
             initrd_len,
-            initrd_size_aligned,
         )
         .unwrap();
 

@@ -42,39 +42,15 @@ pub struct Ghcb {
 pub static mut GHCB_PAGE: MemoryRegion =
     MemoryRegion::new(GHCB_ADDR as u64, core::mem::size_of::<Ghcb>() as u64);
 
-pub fn page_state_change(addr: u64, len: u64, private: bool) {
-    let mut ghcb_msr = x86_64::registers::model_specific::Msr::new(GHCB_MSR);
-    let mut len_aligned = if len & !0xfff > len {
-        (len & !0xfff) + 0x1000
-    } else {
-        len
-    };
-    let mut addr = addr;
-    while len_aligned > 0 {
-        let mut value = if private { 1 << 52 } else { 2 << 52 };
-        value |= addr & !0xfff;
-        value |= 0x014;
-
-        unsafe { ghcb_msr.write(value) };
-
-        unsafe {
-            core::arch::asm!("rep; vmmcall\n\r");
-        }
-
-        len_aligned -= 0x1000;
-        addr += 0x1000;
-    }
-}
-
 pub fn register_ghcb_page() {
     let mut ghcb_msr = x86_64::registers::model_specific::Msr::new(GHCB_MSR);
 
-    unsafe { ghcb_msr.write(GHCB_ADDR as u64 | 0x12) };
+    // unsafe { ghcb_msr.write(GHCB_ADDR as u64 | 0x12) };
 
-    vmgexit();
+    // vmgexit();
 
-    //TODO check response
-    let _response = unsafe { ghcb_msr.read() };
+    // //TODO check response
+    // let _response = unsafe { ghcb_msr.read() };
 
     unsafe { ghcb_msr.write(GHCB_ADDR as u64) };
 }
