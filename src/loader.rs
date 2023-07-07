@@ -60,7 +60,12 @@ impl Kernel {
             .copy_from_slice(&params_region.as_bytes());
     }
 
-    pub fn load_bzimage_from_payload(&mut self, kernel: &mut MemoryRegion) -> Result<(), Error> {
+    pub fn load_bzimage_from_payload(
+        &mut self,
+        kernel: &mut MemoryRegion,
+        initrd_addr: u32,
+        initrd_size: u32,
+    ) -> Result<(), Error> {
         let mut header = [0u8; 1024];
         for i in 0..1024 {
             header[i] = kernel.read_u8(i as u64);
@@ -86,6 +91,9 @@ impl Kernel {
         self.hdr.code32_start = KERNEL_LOAD + setup_bytes;
         self.hdr.cmd_line_ptr = CMDLINE_START as u32;
         self.entry_point = self.hdr.code32_start as u64 + 0x200;
+
+        self.hdr.ramdisk_image = initrd_addr;
+        self.hdr.ramdisk_size = initrd_size;
 
         if self.hdr.setup_data == 0 {
             const SETUP_DATA_LEN: u64 = core::mem::size_of::<SetupData>() as u64;

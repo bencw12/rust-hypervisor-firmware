@@ -25,7 +25,7 @@ pub static mut L2_TABLES: [PageTable; ADDRESS_SPACE_GIB] = [TABLE; ADDRESS_SPACE
 #[no_mangle]
 static SEV_ENC_BIT: u64 = 1 << 51;
 
-pub fn setup(plain_text: bool) {
+pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned: u64) {
     // SAFETY: This function is idempontent and only writes to static memory and
     // CR3. Thus, it is safe to run multiple times or on multiple threads.
     let (l4, l3, l2s) = unsafe { (&mut L4_TABLE, &mut L3_TABLE, &mut L2_TABLES) };
@@ -36,10 +36,17 @@ pub fn setup(plain_text: bool) {
     for l2 in l2s.iter_mut() {
         for l2e in l2.iter_mut() {
             //leave C-bit clear on [16MB, 34MB) (8 pages for bzimage and 1 page for GHCB)
-            let addr = if (next_addr.as_u64() >= 8 * Size2MiB::SIZE)
-                && (next_addr.as_u64() <= GHCB_ADDR as u64)
+            let addr = if (((next_addr.as_u64() >= 8 * Size2MiB::SIZE)
+                && (next_addr.as_u64() <= GHCB_ADDR as u64))
+                || ((next_addr.as_u64() >= initrd_plain_text_addr)
+                    && (next_addr.as_u64() < initrd_plain_text_addr + initrd_size_aligned)))
                 && plain_text
             {
+                if next_addr.as_u64() == 0xed00000 {
+                    loop {
+                        hlt();
+                    }
+                }
                 PhysAddr::new(next_addr.as_u64())
             } else {
                 PhysAddr::new(next_addr.as_u64() | SEV_ENC_BIT)
@@ -69,7 +76,13 @@ pub fn setup(plain_text: bool) {
     }
 }
 
-pub fn pvalidate_ram(e820_entry: &boot_e820_entry, stack_start: u64, plain_text: bool) {
+pub fn pvalidate_ram(
+    e820_entry: &boot_e820_entry,
+    stack_start: u64,
+    initrd_plain_text_addr: u64,
+    initrd_size: u64,
+    plain_text: bool,
+) {
     let start = e820_entry.addr;
     let mut size = e820_entry.size;
 
@@ -143,6 +156,11 @@ pub fn pvalidate_ram(e820_entry: &boot_e820_entry, stack_start: u64, plain_text:
         if start_pg == (stack_start - STACK_SIZE) >> 12 {
             start_pg += 128 / 4;
             npgs -= 128 / 4;
+        }
+
+        if start_pg == (initrd_plain_text_addr >> 12) && plain_text {
+            start_pg += initrd_size >> 12;
+            npgs -= initrd_size >> 12;
         }
 
         pvalidate(start_pg, 1);

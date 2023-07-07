@@ -77,14 +77,57 @@ impl FwCfg {
         KernelType::BzImage
     }
 
-    pub fn load_kernel(&mut self, kernel_len: u32) -> Result<(), &'static str> {
+    pub fn load_kernel(
+        &mut self,
+        kernel_len: u32,
+        initrd_plain_text_addr: u64,
+        initrd_load_addr: u64,
+        initrd_len: u64,
+        initrd_size_aligned: u64,
+    ) -> Result<(), &'static str> {
         match self.kernel_type {
-            KernelType::BzImage => self.load_bzimage(kernel_len)?,
+            KernelType::BzImage => self.load_bzimage(
+                kernel_len,
+                initrd_plain_text_addr,
+                initrd_load_addr,
+                initrd_len,
+                initrd_size_aligned,
+            )?,
         };
         Ok(())
     }
 
-    pub fn load_bzimage(&mut self, kernel_len: u32) -> Result<(), &'static str> {
+    //this will copy initrd from plain text to encrypted memory
+    pub fn load_initrd(
+        &mut self,
+        initrd_plain_text_addr: u64,
+        initrd_load_addr: u64,
+        initrd_len: u64,
+    ) -> Result<(), &'static str> {
+        let mut plain_text_region = MemoryRegion::new(initrd_plain_text_addr, initrd_len);
+        let mut encrypted_region = MemoryRegion::new(initrd_load_addr, initrd_len);
+
+        encrypted_region
+            .as_bytes()
+            .copy_from_slice(&plain_text_region.as_bytes());
+
+        Self::debug_write(HASH_START);
+        let mut hasher = Sha256::new();
+        hasher.update(encrypted_region.as_bytes());
+        let _hash = hasher.finalize();
+        Self::debug_write(HASH_END);
+
+        Ok(())
+    }
+
+    pub fn load_bzimage(
+        &mut self,
+        kernel_len: u32,
+        initrd_plain_text_addr: u64,
+        initrd_load_addr: u64,
+        initrd_len: u64,
+        initrd_size_aligned: u64,
+    ) -> Result<(), &'static str> {
         let bzimage_len = kernel_len as u64;
         //load the kernel at 2mib in encrypted memory
         const KERNEL_LOAD: u64 = 0x200000;
@@ -109,12 +152,19 @@ impl FwCfg {
         Self::debug_write(HASH_END);
 
         let mut kernel = Kernel::new();
-        kernel.load_bzimage_from_payload(&mut load_region).unwrap();
+        kernel
+            .load_bzimage_from_payload(&mut load_region, initrd_load_addr as u32, initrd_len as u32)
+            .unwrap();
+
+        self.load_initrd(initrd_plain_text_addr, initrd_load_addr, initrd_len)?;
 
         //set the plain text region for the kernel and the ghcb page private
         ghcb::page_state_change(KERNEL_ADDR, KERNEL_ADDR + Size2MiB::SIZE, true);
+        //set plain text region for initrd private
+        ghcb::page_state_change(initrd_plain_text_addr, initrd_size_aligned, true);
+
         //set the C-bit everywhere
-        paging::setup(false);
+        paging::setup(false, 0, 0);
 
         //re-validate the region we used for the plain text kernel
         let entry = boot_e820_entry {
@@ -122,7 +172,15 @@ impl FwCfg {
             size: KERNEL_ADDR + Size2MiB::SIZE,
             type_: 1,
         };
-        paging::pvalidate_ram(&entry, 0 as u64, false);
+        paging::pvalidate_ram(&entry, 0 as u64, 0, 0, false);
+
+        //re-validate the region we used for the plain text initrd
+        let entry = boot_e820_entry {
+            addr: initrd_plain_text_addr,
+            size: initrd_size_aligned,
+            type_: 1,
+        };
+        paging::pvalidate_ram(&entry, 0 as u64, 0, 0, false);
 
         kernel.boot();
 
