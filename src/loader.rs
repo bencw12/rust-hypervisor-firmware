@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::{
-    boot::{CCBlob, HEADER_START, SETUP_CC_BLOB},
-    boot::{Header, SetupData},
+    boot::HEADER_START,
+    boot::Header,
     mem::MemoryRegion,
 };
 
@@ -27,8 +27,6 @@ pub const KERNEL_LOAD: u32 = 0x200_000;
 pub const ZERO_PAGE_START: u64 = 0x7000;
 pub const HASH_SIZE_BYTES: u64 = 32;
 pub const CMDLINE_START: u64 = 0x20000;
-pub const CPUID_PAGE_ADDR: u64 = 0x1000;
-pub const CPUID_PAGE_LEN: u64 = 0x1000;
 
 pub struct Kernel {
     pub hdr: Header,

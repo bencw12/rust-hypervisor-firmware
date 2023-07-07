@@ -1,62 +1,7 @@
 use core::mem::{size_of, transmute, zeroed};
 
-use crate::mem::MemoryRegion;
-
 pub const HEADER_START: usize = 0x1f1;
 const HEADER_END: usize = HEADER_START + size_of::<Header>();
-pub const SETUP_CC_BLOB: u32 = 7;
-
-#[derive(Clone, Copy, Debug)]
-#[repr(C, packed)]
-pub struct CCBlob {
-    pub magic: u32,
-    pub version: u16,
-    pub reserved: u16,
-    pub secrets_phys: u64,
-    pub secrets_len: u32,
-    pub reserved1: u32,
-    pub cpuid_phys: u64,
-    pub cpuid_len: u32,
-    pub reserved2: u32,
-}
-
-impl CCBlob {
-    pub fn as_slice(&self) -> [u8; core::mem::size_of::<CCBlob>()] {
-        let mut res = [0u8; core::mem::size_of::<CCBlob>()];
-        let region = MemoryRegion::from_bytes(&mut res);
-        region.write_u32(0, self.magic);
-        region.write_u16(0x4, self.version);
-        region.write_u16(0x6, self.reserved);
-        region.write_u64(0x8, self.secrets_phys);
-        region.write_u32(0x10, self.secrets_len);
-        region.write_u32(0x14, self.reserved1);
-        region.write_u64(0x18, self.cpuid_phys);
-        region.write_u32(0x20, self.cpuid_len);
-        region.write_u32(0x24, self.reserved2);
-        res
-    }
-}
-
-#[derive(Clone, Debug)]
-#[repr(C, packed)]
-pub struct SetupData {
-    pub next: u64,
-    pub _type: u32,
-    pub len: u32,
-    pub cc_blob_addr: u32,
-}
-
-impl SetupData {
-    pub fn as_slice(&self) -> [u8; core::mem::size_of::<SetupData>()] {
-        let mut res = [0u8; core::mem::size_of::<SetupData>()];
-        let region = MemoryRegion::from_bytes(&mut res);
-        region.write_u64(0, self.next);
-        region.write_u32(8, self._type);
-        region.write_u32(12, self.len);
-        region.write_u32(16, self.cc_blob_addr);
-        res
-    }
-}
 
 #[repr(C, packed)]
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
