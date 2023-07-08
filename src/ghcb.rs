@@ -54,6 +54,9 @@ pub fn page_state_change(addr: u64, len: u64, private: bool) {
         let mut value = if private { 1 << 52 } else { 2 << 52 };
         value |= addr & !0xfff;
         value |= 0x014;
+        if addr & (0x200000 - 1) == 0 && (addr + len_aligned) >= addr + 0x200_000 {
+            value |= 1 << 63;
+        }
 
         unsafe { ghcb_msr.write(value) };
 
@@ -61,8 +64,13 @@ pub fn page_state_change(addr: u64, len: u64, private: bool) {
             core::arch::asm!("rep; vmmcall\n\r");
         }
 
-        len_aligned -= 0x1000;
-        addr += 0x1000;
+        if addr & (0x200000 - 1) == 0 && (addr + len_aligned) >= addr + 0x200_000 {
+            len_aligned -= 0x200000;
+            addr += 0x200000;
+        } else {
+            len_aligned -= 0x1000;
+            addr += 0x1000;
+        }
     }
 }
 

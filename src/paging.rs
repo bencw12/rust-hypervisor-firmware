@@ -42,11 +42,6 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
                     && (next_addr.as_u64() < initrd_plain_text_addr + initrd_size_aligned)))
                 && plain_text
             {
-                if next_addr.as_u64() == 0xed00000 {
-                    loop {
-                        hlt();
-                    }
-                }
                 PhysAddr::new(next_addr.as_u64())
             } else {
                 PhysAddr::new(next_addr.as_u64() | SEV_ENC_BIT)
