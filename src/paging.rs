@@ -97,10 +97,6 @@ pub fn pvalidate_ram(
     let mut npgs = (size >> 12) as i64;
     let mut start_pg = start >> 12;
 
-
-    let mut debug_port = Port::<u8>::new(0x80);
-
-
     while npgs > 0 {
         // skip cpuid page
         if start_pg == CPUID_PAGE_ADDR >> 12 {
@@ -169,11 +165,10 @@ pub fn pvalidate_ram(
         // unsafe{ debug_port.write(0x55u8)};
         npgs -= n as i64;
         // unsafe{ debug_port.write(0x55u8)};
-
     }
 }
 
-pub fn pvalidate(start: u64, valid: u32) -> u64{
+pub fn pvalidate(start: u64, valid: u32) -> u64 {
     //start is the page number (4k pages) that we are validating
     let addr = start << 12;
     let mut cf: u8;
@@ -184,7 +179,6 @@ pub fn pvalidate(start: u64, valid: u32) -> u64{
 
     //try 2mb first
     if addr & (0x200000 - 1) != 0 {
-
         page_size = 0;
         unsafe {
             core::arch::asm!(
@@ -205,7 +199,7 @@ pub fn pvalidate(start: u64, valid: u32) -> u64{
                 hlt();
             }
         }
-    
+
         if cf != 0 {
             unsafe { debug_port.write(0x89 as u8) };
             loop {
@@ -213,7 +207,7 @@ pub fn pvalidate(start: u64, valid: u32) -> u64{
             }
         }
 
-        return 1; 
+        return 1;
     }
     // unsafe { debug_port.write(addr as u8) };
 
@@ -231,7 +225,6 @@ pub fn pvalidate(start: u64, valid: u32) -> u64{
     }
 
     // unsafe { debug_port.write(addr as u8) };
-
 
     // if rc == 0 {
     //     unsafe{ debug_port.write(0x77)};
@@ -259,7 +252,7 @@ pub fn pvalidate(start: u64, valid: u32) -> u64{
                 hlt();
             }
         }
-    
+
         if cf != 0 {
             unsafe { debug_port.write(0x89 as u8) };
             loop {
@@ -267,7 +260,7 @@ pub fn pvalidate(start: u64, valid: u32) -> u64{
             }
         }
 
-        return 1; 
+        return 1;
     }
 
     if rc != 0 {
