@@ -11,11 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::{
-    boot::HEADER_START,
-    boot::Header,
-    mem::MemoryRegion,
-};
+use crate::{boot::Header, boot::HEADER_START, mem::MemoryRegion};
 
 #[derive(Debug)]
 pub enum Error {
