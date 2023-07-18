@@ -4,7 +4,7 @@ use x86_64::{
     PhysAddr,
 };
 
-use crate::{fw_cfg::KERNEL_ADDR, fw_cfg::KERNEL_MAX_SIZE, ghcb::GHCB_ADDR};
+use crate::{fw_cfg::KERNEL_ADDR, ghcb::GHCB_ADDR};
 // Amount of memory we identity map in setup(), max 512 GiB.
 #[no_mangle]
 static ADDRESS_SPACE_GIB_COPY: u32 = 1;

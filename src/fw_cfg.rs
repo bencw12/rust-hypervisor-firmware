@@ -24,7 +24,6 @@ const HASH_END: u8 = 0x61;
 const KERNEL_LOAD: u64 = 0x200000;
 //Firecracker puts kernel at 32mib
 pub const KERNEL_ADDR: u64 = 0x2000000;
-pub const KERNEL_MAX_SIZE: u64 = 0x1000000;
 
 enum KernelType {
     BzImage,
