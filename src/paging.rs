@@ -7,8 +7,11 @@ use x86_64::{
 
 use x86_64::instructions::port::Port;
 
-use crate::boot::boot_e820_entry;
 use crate::ghcb::GHCB_ADDR;
+use crate::{
+    boot::boot_e820_entry,
+    fw_cfg::{KERNEL_ADDR, KERNEL_MAX_LEN},
+};
 // Amount of memory we identity map in setup(), max 512 GiB.
 #[no_mangle]
 static ADDRESS_SPACE_GIB_COPY: u32 = 1;
@@ -36,7 +39,7 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
     for l2 in l2s.iter_mut() {
         for l2e in l2.iter_mut() {
             //leave C-bit clear on [16MB, 34MB) (8 pages for bzimage and 1 page for GHCB)
-            let addr = if (((next_addr.as_u64() >= 8 * Size2MiB::SIZE)
+            let addr = if (((next_addr.as_u64() >= KERNEL_ADDR)
                 && (next_addr.as_u64() <= GHCB_ADDR as u64))
                 || ((next_addr.as_u64() >= initrd_plain_text_addr)
                     && (next_addr.as_u64() < initrd_plain_text_addr + initrd_size_aligned)))
@@ -87,9 +90,9 @@ pub fn pvalidate_ram(
     const ZERO_PAGE_START: u64 = 0x7000; // 28K
     const FIRMWARE_START: u64 = 0x100000; // 1M
     const KERNEL_HASH_START: u64 = FIRMWARE_START - 0x1000; //1M - 4K
-    const KERNEL_PLAIN_TEXT: u64 = 0x1000000; // 16M
+    const KERNEL_PLAIN_TEXT: u64 = KERNEL_ADDR; // 16M
     const KERNEL_CMDLINE: u64 = 0x20000; //128K
-    const GHCB_PAGE: u64 = 0x2000000; // 32M
+    const GHCB_PAGE: u64 = GHCB_ADDR as u64; // 32M
     const STACK_SIZE: u64 = 0x20000;
     size = size & !0xfff;
 
@@ -120,8 +123,8 @@ pub fn pvalidate_ram(
         }
         // //skip plain text kernel
         if start_pg == (KERNEL_PLAIN_TEXT >> 12) && plain_text {
-            start_pg += (8 * Size2MiB::SIZE) >> 12;
-            npgs -= ((8 * Size2MiB::SIZE) >> 12) as i64;
+            start_pg += KERNEL_MAX_LEN >> 12;
+            npgs -= (KERNEL_MAX_LEN >> 12) as i64;
         }
         // //skip kernel cmdline
         if start_pg == KERNEL_CMDLINE >> 12 {
@@ -162,9 +165,7 @@ pub fn pvalidate_ram(
         let n = pvalidate(start_pg, 1);
 
         start_pg += n;
-        // unsafe{ debug_port.write(0x55u8)};
         npgs -= n as i64;
-        // unsafe{ debug_port.write(0x55u8)};
     }
 }
 

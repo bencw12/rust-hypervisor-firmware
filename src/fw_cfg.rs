@@ -13,6 +13,13 @@ use crate::{
 use sha2::Digest;
 use sha2::Sha256;
 
+//load the kernel at 2mib in encrypted memory
+const KERNEL_LOAD: u64 = 0x200000;
+//Firecracker puts kernel at 32mib
+pub const KERNEL_ADDR: u64 = 0x2000000;
+//Max bzImage length (16MiB)
+pub const KERNEL_MAX_LEN: u64 = 0x1000000;
+
 const DEBUG_PORT: u16 = 0x80;
 const FW_CFG_REG: u16 = 0x81;
 const FW_CFG_DATA_BASE: u64 = 0x200000;
@@ -129,10 +136,7 @@ impl FwCfg {
         initrd_size_aligned: u64,
     ) -> Result<(), &'static str> {
         let bzimage_len = kernel_len as u64;
-        //load the kernel at 2mib in encrypted memory
-        const KERNEL_LOAD: u64 = 0x200000;
-        //Firecracker puts kernel at 16mib
-        const KERNEL_ADDR: u64 = 0x1000000;
+
         let mut kernel_region = MemoryRegion::new(KERNEL_ADDR, bzimage_len.into());
         let mut load_region = MemoryRegion::new(KERNEL_LOAD, bzimage_len.into());
 
@@ -160,6 +164,7 @@ impl FwCfg {
 
         //set the plain text region for the kernel and the ghcb page private
         ghcb::page_state_change(KERNEL_ADDR, KERNEL_ADDR + Size2MiB::SIZE, true);
+
         //set plain text region for initrd private
         ghcb::page_state_change(initrd_plain_text_addr, initrd_size_aligned, true);
 
@@ -169,7 +174,7 @@ impl FwCfg {
         //re-validate the region we used for the plain text kernel
         let entry = boot_e820_entry {
             addr: KERNEL_ADDR,
-            size: KERNEL_ADDR + Size2MiB::SIZE,
+            size: KERNEL_MAX_LEN + Size2MiB::SIZE,
             type_: 1,
         };
         paging::pvalidate_ram(&entry, 0 as u64, 0, 0, false);
