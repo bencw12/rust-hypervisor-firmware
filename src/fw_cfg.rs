@@ -20,6 +20,12 @@ const COPY_END: u8 = 0x51;
 const HASH_START: u8 = 0x60;
 const HASH_END: u8 = 0x61;
 
+//load the kernel at 2mib in encrypted memory
+const KERNEL_LOAD: u64 = 0x200000;
+//Firecracker puts kernel at 32mib
+pub const KERNEL_ADDR: u64 = 0x2000000;
+pub const KERNEL_MAX_SIZE: u64 = 0x1000000;
+
 enum KernelType {
     BzImage,
 }
@@ -121,10 +127,7 @@ impl FwCfg {
         initrd_len: u64,
     ) -> Result<(), &'static str> {
         let bzimage_len = kernel_len as u64;
-        //load the kernel at 2mib in encrypted memory
-        const KERNEL_LOAD: u64 = 0x200000;
-        //Firecracker puts kernel at 16mib
-        const KERNEL_ADDR: u64 = 0x1000000;
+
         let mut kernel_region = MemoryRegion::new(KERNEL_ADDR, bzimage_len.into());
         let mut load_region = MemoryRegion::new(KERNEL_LOAD, bzimage_len.into());
 
@@ -144,6 +147,7 @@ impl FwCfg {
         Self::debug_write(HASH_END);
 
         let mut kernel = Kernel::new();
+
         kernel
             .load_bzimage_from_payload(&mut load_region, initrd_load_addr as u32, initrd_len as u32)
             .unwrap();
