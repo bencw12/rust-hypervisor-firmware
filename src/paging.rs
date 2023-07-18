@@ -4,7 +4,7 @@ use x86_64::{
     PhysAddr,
 };
 
-use crate::ghcb::GHCB_ADDR;
+use crate::{fw_cfg::KERNEL_ADDR, fw_cfg::KERNEL_MAX_SIZE, ghcb::GHCB_ADDR};
 // Amount of memory we identity map in setup(), max 512 GiB.
 #[no_mangle]
 static ADDRESS_SPACE_GIB_COPY: u32 = 1;
@@ -32,7 +32,7 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
     for l2 in l2s.iter_mut() {
         for l2e in l2.iter_mut() {
             //leave C-bit clear on [16MB, 34MB) (8 pages for bzimage and 1 page for GHCB)
-            let addr = if (((next_addr.as_u64() >= 8 * Size2MiB::SIZE)
+            let addr = if (((next_addr.as_u64() >= KERNEL_ADDR)
                 && (next_addr.as_u64() <= GHCB_ADDR as u64))
                 || ((next_addr.as_u64() >= initrd_plain_text_addr)
                     && (next_addr.as_u64() < initrd_plain_text_addr + initrd_size_aligned)))
@@ -42,6 +42,7 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
             } else {
                 PhysAddr::new(next_addr.as_u64() | SEV_ENC_BIT)
             };
+
             l2e.set_addr(addr, pt_flags | PageTableFlags::HUGE_PAGE);
             next_addr += Size2MiB::SIZE;
         }
