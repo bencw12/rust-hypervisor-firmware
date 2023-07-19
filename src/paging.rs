@@ -7,10 +7,13 @@ use x86_64::{
 
 use x86_64::instructions::port::Port;
 
-use crate::{ghcb::GHCB_ADDR, loader::{SECRETS_PAGE_ADDR, SECRETS_PAGE_LEN}};
 use crate::{
     boot::boot_e820_entry,
     fw_cfg::{KERNEL_ADDR, KERNEL_MAX_LEN},
+};
+use crate::{
+    ghcb::GHCB_ADDR,
+    loader::{SECRETS_PAGE_ADDR, SECRETS_PAGE_LEN},
 };
 // Amount of memory we identity map in setup(), max 512 GiB.
 #[no_mangle]
