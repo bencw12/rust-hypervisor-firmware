@@ -7,7 +7,7 @@ use x86_64::{
 
 use x86_64::instructions::port::Port;
 
-use crate::ghcb::GHCB_ADDR;
+use crate::{ghcb::GHCB_ADDR, loader::{SECRETS_PAGE_ADDR, SECRETS_PAGE_LEN}};
 use crate::{
     boot::boot_e820_entry,
     fw_cfg::{KERNEL_ADDR, KERNEL_MAX_LEN},
@@ -135,6 +135,12 @@ pub fn pvalidate_ram(
         if start_pg == (GHCB_PAGE >> 12) && plain_text {
             start_pg += 512;
             npgs -= 512;
+        }
+
+        //note, don't try to validate the same address as the secrets page
+        if start_pg == (SECRETS_PAGE_ADDR >> 12) {
+            start_pg += SECRETS_PAGE_LEN >> 12;
+            npgs -= (SECRETS_PAGE_LEN >> 12) as i64;
         }
 
         //skip over page tables this works because this is the order they're defined in

@@ -31,6 +31,8 @@ pub const E820_ENTRIES_OFFSET: u64 = 0x1e8;
 pub const E820_TABLE_OFFSET: u64 = 0x2d0;
 pub const CPUID_PAGE_ADDR: u64 = 0x1000;
 pub const CPUID_PAGE_LEN: u64 = 0x1000;
+pub const SECRETS_PAGE_ADDR: u64 = 0x2000;
+pub const SECRETS_PAGE_LEN: u64 = 0x1000;
 
 pub struct Kernel {
     pub hdr: Header,
@@ -114,8 +116,8 @@ impl Kernel {
                 magic: CCBLOB_MAGIC,
                 version: 0,
                 reserved: 0,
-                secrets_phys: 0,
-                secrets_len: 0,
+                secrets_phys: SECRETS_PAGE_ADDR,
+                secrets_len: SECRETS_PAGE_LEN as u32,
                 reserved1: 0,
                 cpuid_phys: CPUID_PAGE_ADDR,
                 cpuid_len: 4096,
