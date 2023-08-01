@@ -28,8 +28,6 @@ use x86_64::{
     structures::paging::{PageSize, Size2MiB},
 };
 
-use crate::{ghcb::Ghcb, serial::Serial};
-
 #[macro_use]
 mod serial;
 
@@ -79,11 +77,11 @@ fn enable_sse() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust64_start(kernel_len: u32) {
-    main(kernel_len)
+pub extern "C" fn rust64_start() {
+    main()
 }
 
-fn main(kernel_len: u32) -> ! {
+fn main() -> ! {
     let initrd_len;
     let initrd_load_addr: u64;
     //Firecracker stashes memory size and initrd_len in r14 and r15 respectively
@@ -108,11 +106,9 @@ fn main(kernel_len: u32) -> ! {
     } else {
         initrd_len
     };
-    
+
     //set up paging so we can have encrypted memory
     paging::setup(true, initrd_plain_text_addr, initrd_size_aligned);
-
-    
 
     //set up ghcb so we can do writes to ports
     ghcb::register_ghcb_page();
@@ -120,6 +116,7 @@ fn main(kernel_len: u32) -> ! {
     //signal firmware start, although a bit late this is the earliest we can do it
     let mut debug_port = Port::<u8>::new(0x80);
     unsafe {
+        //This also sets ghcb::SEV_ES to true because we wouldn't invoke the #VC handler if we weren't SEV-ES
         debug_port.write(0x31u8);
     };
 
@@ -129,12 +126,7 @@ fn main(kernel_len: u32) -> ! {
     };
 
     loader
-        .load_kernel(
-            kernel_len,
-            initrd_plain_text_addr,
-            initrd_load_addr,
-            initrd_len,
-        )
+        .load_kernel(initrd_plain_text_addr, initrd_load_addr, initrd_len)
         .unwrap();
 
     panic!("Shouldn't reach here")

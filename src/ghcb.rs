@@ -1,5 +1,3 @@
-use x86_64::structures::paging::{PageSize, Size2MiB};
-
 use crate::mem::MemoryRegion;
 
 #[no_mangle]
@@ -69,8 +67,7 @@ impl Ghcb {
     }
     //Write ghcb struct to ghcb page
     pub fn port_io(port: u16, value: u8, op: u8) {
-
-        unsafe{ SEV_ES = true };
+        unsafe { SEV_ES = true };
 
         let rax: u64 = value as u64;
         let exitinfo1: u64 = ((port as u64) << 16) | 0x10 | (op as u64);

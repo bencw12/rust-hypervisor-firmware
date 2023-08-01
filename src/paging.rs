@@ -32,11 +32,11 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
     for l2 in l2s.iter_mut() {
         for l2e in l2.iter_mut() {
             //leave C-bit clear on [16MB, 34MB) (8 pages for bzimage and 1 page for GHCB)
-            let addr = if (next_addr.as_u64() == KERNEL_ADDR) 
+            let addr = if (next_addr.as_u64() == KERNEL_ADDR)
                 || (next_addr.as_u64() == GHCB_ADDR as u64)
                 || ((next_addr.as_u64() >= initrd_plain_text_addr)
                     && (next_addr.as_u64() < initrd_plain_text_addr + initrd_size_aligned))
-                && plain_text
+                    && plain_text
             {
                 PhysAddr::new(next_addr.as_u64())
             } else {

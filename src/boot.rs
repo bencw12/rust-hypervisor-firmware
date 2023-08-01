@@ -1,15 +1,4 @@
-use core::mem::{size_of, transmute, zeroed};
-
-pub const HEADER_START: usize = 0x1f1;
-const HEADER_END: usize = HEADER_START + size_of::<Header>();
-
-#[repr(C, packed)]
-#[derive(Debug, Default, Copy, Clone, PartialEq)]
-pub struct boot_e820_entry {
-    pub addr: u64,
-    pub size: u64,
-    pub type_: u32,
-}
+use core::mem::zeroed;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C, packed)]
@@ -53,21 +42,6 @@ pub struct Header {
     pub init_size: u32,
     pub handover_offset: u32,
     pub kernel_info_offset: u32,
-}
-
-impl Header {
-    pub fn from_slice(f: &[u8]) -> Self {
-        let mut data: [u8; 1024] = [0; 1024];
-        data.copy_from_slice(f);
-        #[repr(C)]
-        struct HeaderData {
-            before: [u8; HEADER_START],
-            hdr: Header,
-            after: [u8; 1024 - HEADER_END],
-        }
-        // SAFETY: Struct consists entirely of primitive integral types.
-        unsafe { transmute::<_, HeaderData>(data) }.hdr
-    }
 }
 
 impl Default for Header {

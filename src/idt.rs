@@ -21,11 +21,11 @@ extern "x86-interrupt" fn vmm_comm_handler(stack_frame: InterruptStackFrame, err
             hlt();
         }
     }
-   
+
     let stack_ptr = stack_frame.stack_pointer.as_u64();
     let ret_addr = (stack_ptr - 40) as *mut u64;
 
-    let instruction = unsafe{ *(*ret_addr as *mut u8) };
+    let instruction = unsafe { *(*ret_addr as *mut u8) };
 
     let op;
     if instruction == 0xee {
@@ -33,12 +33,12 @@ extern "x86-interrupt" fn vmm_comm_handler(stack_frame: InterruptStackFrame, err
         op = 0;
     } else if instruction == 0xec {
         //in
-        op = 1;  
+        op = 1;
     } else {
-        loop { hlt(); }
+        loop {
+            hlt();
+        }
     }
-
-
 
     Ghcb::port_io(port as u16, val as u8, op as u8);
 
