@@ -13,20 +13,33 @@ extern "x86-interrupt" fn vmm_comm_handler(stack_frame: InterruptStackFrame, err
     unsafe { asm!("", out("rdx") port) };
 
     if error_code != 0x7b {
-        //write the code to the debug port
-        Ghcb::port_io(port as u16, error_code as u8);
-        ghcb::vmgexit();
         //if we ever get here we shouldn't have so hlt loop
         loop {
             hlt();
         }
     }
-    Ghcb::port_io(port as u16, val as u8);
-
-    ghcb::vmgexit();
 
     let stack_ptr = stack_frame.stack_pointer.as_u64();
     let ret_addr = (stack_ptr - 40) as *mut u64;
+
+    let instruction = unsafe { *(*ret_addr as *mut u8) };
+
+    let op;
+    if instruction == 0xee {
+        //out
+        op = 0;
+    } else if instruction == 0xec {
+        //in
+        op = 1;
+    } else {
+        loop {
+            hlt();
+        }
+    }
+    Ghcb::port_io(port as u16, val as u8, op as u8);
+
+    ghcb::vmgexit();
+
     //jump over the faulting instruction
     unsafe { *ret_addr = stack_frame.instruction_pointer.as_u64() + 1 };
 }

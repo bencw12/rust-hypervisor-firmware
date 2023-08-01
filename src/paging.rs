@@ -7,10 +7,7 @@ use x86_64::{
 
 use x86_64::instructions::port::Port;
 
-use crate::{
-    boot::boot_e820_entry,
-    fw_cfg::{KERNEL_ADDR, KERNEL_MAX_LEN},
-};
+use crate::{boot::BootE820Entry, fw_cfg::KERNEL_ADDR};
 use crate::{
     ghcb::GHCB_ADDR,
     loader::{SECRETS_PAGE_ADDR, SECRETS_PAGE_LEN},
@@ -42,11 +39,11 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
     for l2 in l2s.iter_mut() {
         for l2e in l2.iter_mut() {
             //leave C-bit clear on [16MB, 34MB) (8 pages for bzimage and 1 page for GHCB)
-            let addr = if (((next_addr.as_u64() >= KERNEL_ADDR)
-                && (next_addr.as_u64() <= GHCB_ADDR as u64))
+            let addr = if (next_addr.as_u64() == KERNEL_ADDR)
+                || (next_addr.as_u64() == GHCB_ADDR as u64)
                 || ((next_addr.as_u64() >= initrd_plain_text_addr)
-                    && (next_addr.as_u64() < initrd_plain_text_addr + initrd_size_aligned)))
-                && plain_text
+                    && (next_addr.as_u64() < initrd_plain_text_addr + initrd_size_aligned))
+                    && plain_text
             {
                 PhysAddr::new(next_addr.as_u64())
             } else {
@@ -78,7 +75,7 @@ pub fn setup(plain_text: bool, initrd_plain_text_addr: u64, initrd_size_aligned:
 }
 
 pub fn pvalidate_ram(
-    e820_entry: &boot_e820_entry,
+    e820_entry: &BootE820Entry,
     stack_start: u64,
     initrd_plain_text_addr: u64,
     initrd_size: u64,
@@ -124,20 +121,20 @@ pub fn pvalidate_ram(
             start_pg += 4;
             npgs -= 4;
         }
+        // //skip over ghcb page if
+        if start_pg == (GHCB_PAGE >> 12) && plain_text {
+            start_pg += 512;
+            npgs -= 512;
+        }
         // //skip plain text kernel
         if start_pg == (KERNEL_PLAIN_TEXT >> 12) && plain_text {
-            start_pg += KERNEL_MAX_LEN >> 12;
-            npgs -= (KERNEL_MAX_LEN >> 12) as i64;
+            start_pg += 512;
+            npgs -= 512 as i64;
         }
         // //skip kernel cmdline
         if start_pg == KERNEL_CMDLINE >> 12 {
             start_pg += 1;
             npgs -= 1;
-        }
-        // //skip over ghcb page if
-        if start_pg == (GHCB_PAGE >> 12) && plain_text {
-            start_pg += 512;
-            npgs -= 512;
         }
 
         //note, don't try to validate the same address as the secrets page
@@ -219,7 +216,6 @@ pub fn pvalidate(start: u64, valid: u32) -> u64 {
 
         return 1;
     }
-    // unsafe { debug_port.write(addr as u8) };
 
     unsafe {
         core::arch::asm!(
@@ -234,14 +230,7 @@ pub fn pvalidate(start: u64, valid: u32) -> u64 {
         );
     }
 
-    // unsafe { debug_port.write(addr as u8) };
-
-    // if rc == 0 {
-    //     unsafe{ debug_port.write(0x77)};
-    // }
-
     if rc == 6 {
-        // unsafe { debug_port.write(0x66 as u8) };
         page_size = 0;
         unsafe {
             core::arch::asm!(

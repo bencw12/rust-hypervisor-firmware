@@ -25,11 +25,11 @@ use x86_64::{
         control::{Cr0, Cr0Flags, Cr4, Cr4Flags},
         xcontrol::{XCr0, XCr0Flags},
     },
-    structures::paging::{PageSize, Size2MiB},
+    structures::paging::{PageSize, PageTable, Size2MiB},
 };
 
 use crate::{
-    boot::boot_e820_entry,
+    boot::{BootE820Entry, Header},
     loader::{E820_ENTRIES_OFFSET, E820_TABLE_OFFSET, ZERO_PAGE_START},
     mem::MemoryRegion,
 };
@@ -41,7 +41,7 @@ mod serial;
 #[macro_use]
 mod asm;
 mod boot;
-// mod elf;
+mod elf;
 mod fw_cfg;
 mod gdt;
 mod ghcb;
@@ -84,11 +84,11 @@ fn enable_sse() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust64_start(kernel_len: u32, stack_start: u32) {
-    main(kernel_len, stack_start)
+pub extern "C" fn rust64_start(stack_start: u32) {
+    main(stack_start)
 }
 
-fn main(kernel_len: u32, stack_start: u32) -> ! {
+fn main(stack_start: u32) -> ! {
     let initrd_len;
     let initrd_load_addr: u64;
     //Firecracker stashes memory size and initrd_len in r14 and r15 respectively
@@ -101,6 +101,7 @@ fn main(kernel_len: u32, stack_start: u32) -> ! {
     enable_sse();
 
     interrupts::enable();
+
     idt::init_idt();
 
     let align_to_pagesize = |address| address & !(0x200000 - 1);
@@ -113,6 +114,7 @@ fn main(kernel_len: u32, stack_start: u32) -> ! {
     } else {
         initrd_len
     };
+
     //set up paging so we can have encrypted memory
     paging::setup(true, initrd_plain_text_addr, initrd_size_aligned);
 
@@ -123,19 +125,43 @@ fn main(kernel_len: u32, stack_start: u32) -> ! {
     let mut debug_port = Port::<u8>::new(0x80);
     unsafe {
         debug_port.write(0x31u8);
+        debug_port.write((paging::L2_TABLES.as_ptr() as u64 >> 12) as u8);
+        debug_port.write((&paging::L3_TABLE as *const PageTable as *const u64 as u64 >> 12) as u8);
+        debug_port.write((&paging::L4_TABLE as *const PageTable as *const u64 as u64 >> 12) as u8);
+        debug_port.write((stack_start) as u8);
+        debug_port.write((stack_start >> 8) as u8);
+        debug_port.write((stack_start >> 16) as u8);
+        debug_port.write((stack_start >> 24) as u8);
     };
 
     //read the e820 entries so we know what memory to validate
     let e820_entries_reg = MemoryRegion::new(ZERO_PAGE_START + E820_ENTRIES_OFFSET, 1);
     let num_e820_entries = e820_entries_reg.read_u8(0);
 
+    unsafe {
+        debug_port.write(num_e820_entries);
+    };
+
     let mut e820_table_reg = MemoryRegion::new(
         ZERO_PAGE_START + E820_TABLE_OFFSET,
-        num_e820_entries as u64 * core::mem::size_of::<boot_e820_entry>() as u64,
+        num_e820_entries as u64 * core::mem::size_of::<BootE820Entry>() as u64,
     );
 
+    let mut header_region = MemoryRegion::new(
+        ZERO_PAGE_START + 0x1f1,
+        core::mem::size_of::<Header>().try_into().unwrap(),
+    );
+
+    let bootparams_header =
+        unsafe { core::mem::transmute::<_, &mut Header>(header_region.as_bytes().as_ptr()) };
+
+    unsafe {
+        debug_port.write(bootparams_header.boot_flag as u8);
+        debug_port.write((bootparams_header.boot_flag >> 8) as u8);
+    };
+
     let e820_entries =
-        unsafe { core::mem::transmute::<_, &mut [boot_e820_entry]>(e820_table_reg.as_bytes()) };
+        unsafe { core::mem::transmute::<_, &mut [BootE820Entry]>(e820_table_reg.as_bytes()) };
 
     for i in 0..num_e820_entries as usize {
         //if its a ram entry validate checking for overlaps
@@ -154,7 +180,6 @@ fn main(kernel_len: u32, stack_start: u32) -> ! {
 
     loader
         .load_kernel(
-            kernel_len,
             initrd_plain_text_addr,
             initrd_load_addr,
             initrd_len,

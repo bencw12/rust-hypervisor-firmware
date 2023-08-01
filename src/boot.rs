@@ -1,9 +1,7 @@
-use core::mem::{size_of, transmute, zeroed};
+use core::mem::zeroed;
 
 use crate::mem::MemoryRegion;
 
-pub const HEADER_START: usize = 0x1f1;
-const HEADER_END: usize = HEADER_START + size_of::<Header>();
 pub const SETUP_CC_BLOB: u32 = 7;
 
 #[derive(Clone, Copy, Debug)]
@@ -60,7 +58,7 @@ impl SetupData {
 
 #[repr(C, packed)]
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
-pub struct boot_e820_entry {
+pub struct BootE820Entry {
     pub addr: u64,
     pub size: u64,
     pub type_: u32,
@@ -108,21 +106,6 @@ pub struct Header {
     pub init_size: u32,
     pub handover_offset: u32,
     pub kernel_info_offset: u32,
-}
-
-impl Header {
-    pub fn from_slice(f: &[u8]) -> Self {
-        let mut data: [u8; 1024] = [0; 1024];
-        data.copy_from_slice(f);
-        #[repr(C)]
-        struct HeaderData {
-            before: [u8; HEADER_START],
-            hdr: Header,
-            after: [u8; 1024 - HEADER_END],
-        }
-        // SAFETY: Struct consists entirely of primitive integral types.
-        unsafe { transmute::<_, HeaderData>(data) }.hdr
-    }
 }
 
 impl Default for Header {

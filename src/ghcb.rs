@@ -1,9 +1,9 @@
-use x86_64::structures::paging::{PageSize, Size2MiB};
-
 use crate::mem::MemoryRegion;
 
-pub const GHCB_ADDR: u32 = 24 * Size2MiB::SIZE as u32; //48MiB
+pub const GHCB_ADDR: u32 = 0x1000000 - 0x400000; //48MiB
 pub const GHCB_MSR: u32 = 0xC001_0130;
+pub static mut SEV_ES: bool = false;
+
 // pub const SEV_STATUS_MSR: u32 = 0xC001_0131;
 #[derive(Clone, Copy, Debug)]
 #[repr(C, packed)]
@@ -93,10 +93,16 @@ pub fn vmgexit() {
 }
 
 impl Ghcb {
+    pub fn get_val() -> u64 {
+        let ghcb = unsafe { core::mem::transmute::<_, &mut Ghcb>(GHCB_PAGE.as_bytes().as_ptr()) };
+        ghcb.rax
+    }
     //Write ghcb struct to ghcb page
-    pub fn port_io(port: u16, value: u8) {
+    pub fn port_io(port: u16, value: u8, op: u8) {
+        unsafe { SEV_ES = true };
+
         let rax: u64 = value as u64;
-        let exitinfo1: u64 = ((port as u64) << 16) | 0x10;
+        let exitinfo1: u64 = ((port as u64) << 16) | 0x10 | (op as u64);
 
         let rax_offset = 0x01f8 / 8;
         let rax_byte_offset = rax_offset / 8;

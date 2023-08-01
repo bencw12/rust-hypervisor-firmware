@@ -3,8 +3,6 @@
 .code32
 
 ram32_start:
-	# stash kernel length
-	movl %ecx, %ebx
 
 validate_L2:
 	movl $L2_TABLES + 4, %edi
@@ -185,9 +183,8 @@ jump_to_64bit:
 
 	movl $stack_start, %esp
 
-	movl $stack_start, %esi
+	movl $stack_start, %edi
 
-	movl %ebx, %edi
 	# Set CS to a 64-bit segment and jump to 64-bit Rust code.
 	ljmpl $0x08, $rust64_start
 
