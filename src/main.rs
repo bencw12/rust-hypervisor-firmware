@@ -28,14 +28,15 @@ use x86_64::{
     structures::paging::{PageSize, Size2MiB},
 };
 
+use crate::{ghcb::Ghcb, serial::Serial};
+
 #[macro_use]
-// #[cfg(debug_assertions)]
 mod serial;
 
 #[macro_use]
 mod asm;
 mod boot;
-// mod elf;
+mod elf;
 mod fw_cfg;
 mod gdt;
 mod ghcb;
@@ -107,8 +108,11 @@ fn main(kernel_len: u32) -> ! {
     } else {
         initrd_len
     };
+    
     //set up paging so we can have encrypted memory
     paging::setup(true, initrd_plain_text_addr, initrd_size_aligned);
+
+    
 
     //set up ghcb so we can do writes to ports
     ghcb::register_ghcb_page();
@@ -120,6 +124,9 @@ fn main(kernel_len: u32) -> ! {
     };
 
     let mut loader = fw_cfg::FwCfg::new();
+    unsafe {
+        debug_port.write(0x31u8);
+    };
 
     loader
         .load_kernel(
