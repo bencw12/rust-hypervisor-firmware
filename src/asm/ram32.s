@@ -7,12 +7,8 @@ ram32_start:
 	movl %ecx, %ebx
 
 	# DEBUG signal to the hypervisor that this is the firmware entry point
-	movl $0xC0010130, %ecx
-	xorl %eax, %eax
-	xorl %edx, %edx
-	movl $0x14, %eax
-	wrmsr
-	rep vmmcall
+	movl $0x31, %eax
+	outb $0x80
 
 setup_page_tables:
 
