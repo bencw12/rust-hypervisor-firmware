@@ -6,6 +6,14 @@ ram32_start:
 	# stash kernel length
 	movl %ecx, %ebx
 
+	# DEBUG signal to the hypervisor that this is the firmware entry point
+	movl $0xC0010130, %ecx
+	xorl %eax, %eax
+	xorl %edx, %edx
+	movl $0x14, %eax
+	wrmsr
+	rep vmmcall
+
 setup_page_tables:
 
 	movl $51, %eax
