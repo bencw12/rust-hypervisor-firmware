@@ -113,17 +113,14 @@ fn main() -> ! {
     //set up ghcb so we can do writes to ports
     ghcb::register_ghcb_page();
 
-    //signal firmware start, although a bit late this is the earliest we can do it
     let mut debug_port = Port::<u8>::new(0x80);
+    //Test #VC handler
     unsafe {
         //This also sets ghcb::SEV_ES to true because we wouldn't invoke the #VC handler if we weren't SEV-ES
-        debug_port.write(0x31u8);
+        debug_port.write(0x00);
     };
 
     let mut loader = fw_cfg::FwCfg::new();
-    unsafe {
-        debug_port.write(0x31u8);
-    };
 
     loader
         .load_kernel(initrd_plain_text_addr, initrd_load_addr, initrd_len)
