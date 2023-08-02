@@ -116,7 +116,7 @@ fn main(kernel_len: u32) -> ! {
     //signal firmware start, although a bit late this is the earliest we can do it
     let mut debug_port = Port::<u8>::new(0x80);
     unsafe {
-        debug_port.write(0x31u8);
+        debug_port.write(0x00);
     };
 
     let mut loader = fw_cfg::FwCfg::new();
