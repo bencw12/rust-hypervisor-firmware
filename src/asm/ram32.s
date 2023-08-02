@@ -3,16 +3,27 @@
 .code32
 
 ram32_start:
-	# stash kernel length
-	movl %ecx, %ebx
+	mov       $0xC0010131, %ecx
+    rdmsr
+    bt        $1, %eax
+	jc		  sev_es_debug
 
-	# DEBUG signal to the hypervisor that this is the firmware entry point
+	movl	  $0x31, %eax
+	outb	  $0x80
+	jmp 	  setup_page_tables
+
+sev_es_debug:
+	# DEBUG signal entry point for
 	movl $0xC0010130, %ecx
 	xorl %eax, %eax
 	xorl %edx, %edx
 	movl $0x14, %eax
 	wrmsr
-	rep vmmcall
+	rep  vmmcall
+
+	xorl %eax, %eax
+	xorl %edx, %edx
+	xorl %ecx, %ecx
 
 setup_page_tables:
 
