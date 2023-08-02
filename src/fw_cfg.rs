@@ -243,10 +243,6 @@ impl FwCfg {
         let seg_hash = hasher.finalize();
         Self::debug_write(HASH_END);
 
-        for i in 0..loader::HASH_SIZE_BYTES as usize {
-            Self::debug_write(seg_hash[i]);
-        }
-
         //Verify segments hash
         Self::validate_hash(&seg_hash, &self.hashes.as_bytes())
             .map_err(|_| "vmlinux verification failed")?;
