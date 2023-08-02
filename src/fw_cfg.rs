@@ -114,9 +114,11 @@ impl FwCfg {
         let mut plain_text_region = MemoryRegion::new(initrd_plain_text_addr, initrd_len);
         let mut encrypted_region = MemoryRegion::new(initrd_load_addr, initrd_len);
 
+        Self::debug_write(COPY_START);
         encrypted_region
             .as_bytes()
             .copy_from_slice(&plain_text_region.as_bytes());
+        Self::debug_write(COPY_END);
 
         Self::debug_write(HASH_START);
         let mut hasher = Sha256::new();
