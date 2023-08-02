@@ -25,7 +25,7 @@ use x86_64::{
         control::{Cr0, Cr0Flags, Cr4, Cr4Flags},
         xcontrol::{XCr0, XCr0Flags},
     },
-    structures::paging::{PageSize, PageTable, Size2MiB},
+    structures::paging::{PageSize, Size2MiB},
 };
 
 use crate::{
@@ -124,23 +124,12 @@ fn main(stack_start: u32) -> ! {
     //signal firmware start, although a bit late this is the earliest we can do it
     let mut debug_port = Port::<u8>::new(0x80);
     unsafe {
-        debug_port.write(0x31u8);
-        debug_port.write((paging::L2_TABLES.as_ptr() as u64 >> 12) as u8);
-        debug_port.write((&paging::L3_TABLE as *const PageTable as *const u64 as u64 >> 12) as u8);
-        debug_port.write((&paging::L4_TABLE as *const PageTable as *const u64 as u64 >> 12) as u8);
-        debug_port.write((stack_start) as u8);
-        debug_port.write((stack_start >> 8) as u8);
-        debug_port.write((stack_start >> 16) as u8);
-        debug_port.write((stack_start >> 24) as u8);
-    };
+        debug_port.write(0x00u8);
+    }
 
     //read the e820 entries so we know what memory to validate
     let e820_entries_reg = MemoryRegion::new(ZERO_PAGE_START + E820_ENTRIES_OFFSET, 1);
     let num_e820_entries = e820_entries_reg.read_u8(0);
-
-    unsafe {
-        debug_port.write(num_e820_entries);
-    };
 
     let mut e820_table_reg = MemoryRegion::new(
         ZERO_PAGE_START + E820_TABLE_OFFSET,
