@@ -19,6 +19,10 @@ const COPY_START: u8 = 0x50;
 const COPY_END: u8 = 0x51;
 const HASH_START: u8 = 0x60;
 const HASH_END: u8 = 0x61;
+const INITRD_COPY_START: u8 = 0x52;
+const INITRD_COPY_END: u8 = 0x53;
+const INITRD_HASH_START: u8 = 0x62;
+const INITRD_HASH_END: u8 = 0x63;
 
 //load the kernel at 2mib in encrypted memory
 const KERNEL_LOAD: u64 = 0x200000;
@@ -105,15 +109,17 @@ impl FwCfg {
         let mut plain_text_region = MemoryRegion::new(initrd_plain_text_addr, initrd_len);
         let mut encrypted_region = MemoryRegion::new(initrd_load_addr, initrd_len);
 
+        Self::debug_write(INITRD_COPY_START);
         encrypted_region
             .as_bytes()
             .copy_from_slice(&plain_text_region.as_bytes());
+        Self::debug_write(INITRD_COPY_END);
 
-        Self::debug_write(HASH_START);
+        Self::debug_write(INITRD_HASH_START);
         let mut hasher = Sha256::new();
         hasher.update(encrypted_region.as_bytes());
         let _hash = hasher.finalize();
-        Self::debug_write(HASH_END);
+        Self::debug_write(INITRD_HASH_END);
 
         Ok(())
     }
