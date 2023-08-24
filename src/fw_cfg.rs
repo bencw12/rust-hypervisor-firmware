@@ -64,7 +64,6 @@ pub(crate) struct FwCfg {
     kernel_type: KernelType,
     cmd_reg: Port<u8>,
     bounce_buffer: MemoryRegion,
-    num_hashes: u64,
     kernel_hash: MemoryRegion,
     initrd_hash: MemoryRegion,
 }
@@ -83,7 +82,6 @@ impl FwCfg {
             kernel_type: KernelType::BzImage,
             cmd_reg,
             bounce_buffer,
-            num_hashes: 1,
             kernel_hash,
             initrd_hash,
         };
