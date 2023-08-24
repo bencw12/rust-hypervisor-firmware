@@ -170,7 +170,9 @@ impl FwCfg {
             .load_bzimage_from_payload(&mut load_region, initrd_load_addr as u32, initrd_len as u32)
             .unwrap();
 
-        self.load_initrd(initrd_plain_text_addr, initrd_load_addr, initrd_len)?;
+        if initrd_len > 0 {
+            self.load_initrd(initrd_plain_text_addr, initrd_load_addr, initrd_len)?;
+        }
 
         //set the plain text region for the kernel and the ghcb page private
         ghcb::page_state_change(KERNEL_ADDR, KERNEL_ADDR + Size2MiB::SIZE, true);
