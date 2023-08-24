@@ -159,7 +159,9 @@ impl FwCfg {
             .load_bzimage_from_payload(&mut load_region, initrd_load_addr as u32, initrd_len as u32)
             .unwrap();
 
-        self.load_initrd(initrd_plain_text_addr, initrd_load_addr, initrd_len)?;
+        if initrd_len > 0 {
+            self.load_initrd(initrd_plain_text_addr, initrd_load_addr, initrd_len)?;
+        }
 
         //set the C-bit everywhere
         paging::setup(false, 0, 0);
