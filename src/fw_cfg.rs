@@ -42,7 +42,8 @@ pub(crate) struct FwCfg {
     _cmd_reg: Port<u32>,
     _bounce_buffer: MemoryRegion,
     num_hashes: u64,
-    hashes: MemoryRegion,
+    kernel_hash: MemoryRegion,
+    initrd_hash: MemoryRegion,
 }
 
 impl FwCfg {
@@ -50,15 +51,16 @@ impl FwCfg {
         let _cmd_reg = Port::<u32>::new(FW_CFG_REG);
         let _bounce_buffer = MemoryRegion::new(FW_CFG_DATA_BASE, FW_CFG_DATA_SIZE);
         let base = FW_ADDR - loader::HASH_SIZE_BYTES;
-        let hashes = MemoryRegion::new(base, loader::HASH_SIZE_BYTES);
-
+        let kernel_hash = MemoryRegion::new(base, loader::HASH_SIZE_BYTES);
+        let initrd_hash = MemoryRegion::new(base - loader::HASH_SIZE_BYTES, loader::HASH_SIZE_BYTES);
         //bzImage default
         let mut fw_cfg = FwCfg {
             kernel_type: KernelType::BzImage,
             _cmd_reg,
             _bounce_buffer,
             num_hashes: 1,
-            hashes,
+            kernel_hash,
+            initrd_hash,
         };
 
         fw_cfg.init();
@@ -72,9 +74,6 @@ impl FwCfg {
         self.num_hashes = match self.kernel_type {
             KernelType::BzImage => 1,
         };
-
-        let base = FW_ADDR - (loader::HASH_SIZE_BYTES * self.num_hashes);
-        self.hashes = MemoryRegion::new(base, loader::HASH_SIZE_BYTES * self.num_hashes);
     }
 
     fn get_kernel_type(&mut self) -> KernelType {
@@ -118,7 +117,10 @@ impl FwCfg {
         Self::debug_write(INITRD_HASH_START);
         let mut hasher = Sha256::new();
         hasher.update(encrypted_region.as_bytes());
-        let _hash = hasher.finalize();
+        let hash = hasher.finalize();
+
+        Self::validate_hash(&hash, &self.initrd_hash.as_bytes())
+            .map_err(|_| "Failed to validate initrd hash")?;
         Self::debug_write(INITRD_HASH_END);
 
         Ok(())
@@ -147,7 +149,7 @@ impl FwCfg {
         let mut hasher = Sha256::new();
         hasher.update(load_region.as_bytes());
         let hash = hasher.finalize();
-        Self::validate_hash(&hash, &self.hashes.as_bytes())
+        Self::validate_hash(&hash, &self.kernel_hash.as_bytes())
             .map_err(|_| "bzImage verification failed")?;
         Self::debug_write(HASH_END);
 
