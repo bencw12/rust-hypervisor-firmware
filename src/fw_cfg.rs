@@ -65,7 +65,8 @@ pub(crate) struct FwCfg {
     cmd_reg: Port<u8>,
     bounce_buffer: MemoryRegion,
     num_hashes: u64,
-    hashes: MemoryRegion,
+    kernel_hash: MemoryRegion,
+    initrd_hash: MemoryRegion,
 }
 
 impl FwCfg {
@@ -73,7 +74,9 @@ impl FwCfg {
         let cmd_reg = Port::<u8>::new(FW_CFG_REG);
         let bounce_buffer = MemoryRegion::new(FW_CFG_DATA_BASE, FW_CFG_DATA_SIZE);
         let base = FW_ADDR - loader::HASH_SIZE_BYTES;
-        let hashes = MemoryRegion::new(base, loader::HASH_SIZE_BYTES);
+        let kernel_hash = MemoryRegion::new(base, loader::HASH_SIZE_BYTES);
+        let initrd_hash =
+            MemoryRegion::new(base - loader::HASH_SIZE_BYTES, loader::HASH_SIZE_BYTES);
 
         //bzImage default
         let mut fw_cfg = FwCfg {
@@ -81,7 +84,8 @@ impl FwCfg {
             cmd_reg,
             bounce_buffer,
             num_hashes: 1,
-            hashes,
+            kernel_hash,
+            initrd_hash,
         };
 
         fw_cfg.init();
@@ -91,9 +95,6 @@ impl FwCfg {
 
     fn init(&mut self) {
         self.kernel_type = self.get_kernel_type();
-
-        let base = FW_ADDR - (loader::HASH_SIZE_BYTES * self.num_hashes);
-        self.hashes = MemoryRegion::new(base, loader::HASH_SIZE_BYTES * self.num_hashes);
     }
 
     fn get_kernel_type(&mut self) -> KernelType {
@@ -138,7 +139,10 @@ impl FwCfg {
         Self::debug_write(INITRD_HASH_START);
         let mut hasher = Sha256::new();
         hasher.update(encrypted_region.as_bytes());
-        let _hash = hasher.finalize();
+        let hash = hasher.finalize();
+
+        Self::validate_hash(&hash, &self.initrd_hash.as_bytes())
+            .map_err(|_| "Failed to validate initrd hash")?;
         Self::debug_write(INITRD_HASH_END);
 
         Ok(())
@@ -250,7 +254,7 @@ impl FwCfg {
         Self::debug_write(HASH_END);
 
         //Verify segments hash
-        Self::validate_hash(&seg_hash, &self.hashes.as_bytes())
+        Self::validate_hash(&seg_hash, &self.kernel_hash.as_bytes())
             .map_err(|_| "vmlinux verification failed")?;
 
         Self::debug_write(0x90);
@@ -259,7 +263,9 @@ impl FwCfg {
         let mut kernel_params = Kernel::new();
         kernel_params.entry_point = ehdr.e_entry;
 
-        self.load_initrd(initrd_plain_text_addr, initrd_load_addr, initrd_len)?;
+        if initrd_len > 0 {
+            self.load_initrd(initrd_plain_text_addr, initrd_load_addr, initrd_len)?;
+        }
 
         //set the C-bit everywhere
         paging::setup(false, 0, 0);
