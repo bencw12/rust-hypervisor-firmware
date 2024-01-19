@@ -35,7 +35,7 @@ impl CCBlob {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C, packed)]
 pub struct SetupData {
     pub next: u64,
