@@ -103,11 +103,7 @@ impl FwCfg {
     }
 
     fn get_kernel_type(&mut self) -> KernelType {
-        match self.do_command(Command::KernelType) {
-            0 => KernelType::BzImage,
-            1 => KernelType::Elf,
-            _ => panic!("Invalid kernel type"),
-        }
+        KernelType::Elf
     }
 
     pub fn load_kernel(
