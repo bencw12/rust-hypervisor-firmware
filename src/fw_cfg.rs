@@ -39,7 +39,7 @@ const INITRD_HASH_START: u8 = 0x62;
 const INITRD_HASH_END: u8 = 0x63;
 enum Command {
     ///Get the type of kernel to load, should be the first command issued
-    KernelType,
+    // KernelType,
     ///For a direct boot, send the ELF header
     ElfHdr,
     ///For a direct boot, get the next phdr
@@ -60,7 +60,7 @@ enum Error {
 impl Into<u8> for Command {
     fn into(self) -> u8 {
         match self {
-            Self::KernelType => 0,
+            // Self::KernelType => 0,
             Self::ElfHdr => 3,
             Self::PhdrData => 4,
             Self::SegData => 5,
