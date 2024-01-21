@@ -31,7 +31,7 @@ pub const KERNEL_ADDR: u64 = 0x1000000 - 0x200000;
 
 enum Command {
     ///Get the type of kernel to load, should be the first command issued
-    KernelType,
+    //KernelType,
     ///For a direct boot, send the ELF header
     ElfHdr,
     ///For a direct boot, get the next phdr
@@ -52,7 +52,7 @@ enum Error {
 impl Into<u8> for Command {
     fn into(self) -> u8 {
         match self {
-            Self::KernelType => 0,
+            // Self::KernelType => 0,
             Self::ElfHdr => 3,
             Self::PhdrData => 4,
             Self::SegData => 5,
@@ -96,11 +96,7 @@ impl FwCfg {
     }
 
     fn get_kernel_type(&mut self) -> KernelType {
-        match self.do_command(Command::KernelType) {
-            0 => KernelType::BzImage,
-            1 => KernelType::Elf,
-            _ => panic!("Invalid kernel type"),
-        }
+        KernelType::Elf
     }
 
     pub fn load_kernel(
